@@ -21,91 +21,116 @@ SITE_GIRIS_SIFRESI = "dortyol2026"
 APP_ID = "dortyol-carsi-v1"
 GUNCEL_YIL = "2026"
 
-# --- FIREBASE BAĞLANTISI ---
+# --- FIREBASE BAĞLANTISI VE STORAGE AYARI ---
 if not firebase_admin._apps:
     try:
         if "firebase" in st.secrets:
             key_dict = json.loads(st.secrets["firebase"]["key"])
+            # Proje ID'sini kullanarak bucket adını otomatik oluşturuyoruz
+            project_id = key_dict.get("project_id")
+            # Firebase deponuzun adı genellikle proje-id.firebasestorage.app veya proje-id.appspot.com olur
+            bucket_name = f"{project_id}.firebasestorage.app" 
+            
             cred = credentials.Certificate(key_dict)
-            # Storage Bucket ismini de secrets içinden alıyoruz
             firebase_admin.initialize_app(cred, {
-                'storageBucket': st.secrets["firebase"].get("storage_bucket", f"{APP_ID}.appspot.com")
+                'storageBucket': bucket_name
             })
+    except Exception as e:
+        st.error(f"Firebase Başlatma Hatası: {e}")
+
+db = None
+col_ref = None
+bucket = None
+
+try:
+    db = firestore.client()
+    col_ref = db.collection("artifacts").document(APP_ID).collection("public").document("data").collection("dukkanlar")
+    # Bucket'ı açıkça ismiyle çağırıyoruz ki ValueError vermesin
+    firebase_config = json.loads(st.secrets["firebase"]["key"])
+    bucket = storage.bucket(f"{firebase_config.get('project_id')}.firebasestorage.app")
+except Exception as e:
+    # Eğer .firebasestorage.app çalışmazsa eski formatı dene
+    try:
+        bucket = storage.bucket(f"{firebase_config.get('project_id')}.appspot.com")
     except:
         pass
 
-db = firestore.client() if firebase_admin._apps else None
-col_ref = db.collection("artifacts").document(APP_ID).collection("public").document("data").collection("dukkanlar") if db else None
-bucket = storage.bucket() if firebase_admin._apps else None
-
 # --- SESSION STATE ---
-if 'is_site_unlocked' not in st.session_state: st.session_state.is_site_unlocked = False
-if 'selected_cat' not in st.session_state: st.session_state.selected_cat = "Tümü"
-if 'selected_shop_id' not in st.session_state: st.session_state.selected_shop_id = None
-if 'owner_shop_id' not in st.session_state: st.session_state.owner_shop_id = None
+states = {
+    'is_site_unlocked': False,
+    'selected_cat': "Tümü",
+    'selected_shop_id': None,
+    'owner_shop_id': None,
+    'sort_by': "En Yüksek Puan"
+}
+for key, val in states.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 
-# --- GERÇEKÇİ DÖRTYOL BAŞLANGIÇ VERİLERİ ---
-def ilk_kurulum():
-    # Eğer DB tamamen boşsa bu dükkanları bir kez yükle
-    test_data = [
-        {"ad": "Kadir Teknoloji", "sektor": "Teknoloji", "sifre": "tekno2026", "icerik": "Dörtyol'un yazılım ve donanım merkezi.", "tel": "0531 000 00 00", "puan": 10.0, "tıklanma": 0, "urunler": []},
-        {"ad": "Antik Kral Künefe", "sektor": "Tatlıcı", "sifre": "kral2026", "icerik": "Kral hasırının tek adresi.", "tel": "0532 000 00 00", "puan": 9.9, "tıklanma": 0, "urunler": []},
-        {"ad": "Aydın Kuyumculuk", "sektor": "Yatırım", "sifre": "aydin2026", "icerik": "Has altın ve mücevherat güvencesi.", "tel": "0533 000 00 00", "puan": 9.8, "tıklanma": 0, "urunler": []}
-    ]
-    if col_ref:
-        docs = col_ref.limit(1).get()
-        if len(docs) == 0:
-            for item in test_data: col_ref.add(item)
-
-if col_ref: ilk_kurulum()
+# --- KÜFÜR FİLTRESİ ---
+KOTU_SOZLER = ["argo1", "kufur2"] # Bu listeyi esnafa göre genişletebilirsin
+def icerik_temizle(metin):
+    for kelime in KOTU_SOZLER:
+        metin = re.sub(re.escape(kelime), "***", metin, flags=re.IGNORECASE)
+    return metin
 
 # --- FONKSİYONLAR ---
 def verileri_yukle():
     if col_ref:
-        docs = col_ref.stream()
-        return [dict(doc.to_dict(), id=doc.id) for doc in docs]
+        try:
+            docs = col_ref.stream()
+            return [dict(doc.to_dict(), id=doc.id) for doc in docs]
+        except: return []
     return []
 
 def resim_yukle(shop_name, file_obj):
     if bucket and file_obj:
-        file_ext = file_obj.name.split('.')[-1]
-        blob_path = f"shops/{shop_name}/{int(time.time())}.{file_ext}"
-        blob = bucket.blob(blob_path)
-        blob.upload_from_string(file_obj.getvalue(), content_type=file_obj.type)
-        blob.make_public()
-        return blob.public_url
+        try:
+            file_ext = file_obj.name.split('.')[-1]
+            blob_path = f"shops/{shop_name}/{int(time.time())}.{file_ext}"
+            blob = bucket.blob(blob_path)
+            blob.upload_from_string(file_obj.getvalue(), content_type=file_obj.type)
+            # URL'yi oluştur ve döndür
+            blob.make_public()
+            return blob.public_url
+        except Exception as e:
+            st.error(f"Görsel yüklenemedi: {e}")
+            return None
     return None
 
-# --- PREMIUM UI ---
-st.markdown("""
+# --- PREMIUM UI (CANLI RENKLER) ---
+st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@300;400;600;800&display=swap');
-    .stApp {
-        background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.95)), url("https://images.unsplash.com/photo-1439405326854-014607f694d7?q=80&w=1920");
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@300;400;600;800&family=Playfair+Display:ital,wght@1,600&display=swap');
+    
+    .stApp {{
+        background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.8)), 
+                    url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1920");
         background-size: cover; background-attachment: fixed; color: #ffffff; font-family: 'Montserrat', sans-serif;
-    }
-    .main-title { font-family: 'Cinzel', serif; color: #ffcc00; font-size: 3rem; text-align: center; margin-top: -100px; letter-spacing: 12px; text-shadow: 0 0 30px rgba(255,204,0,0.4); }
-    .business-card { background: rgba(255,255,255,0.03); border-radius: 20px; border-left: 6px solid #ffcc00; padding: 25px; margin-bottom: 15px; border-top: 1px solid #333; }
-    .product-box { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 20px; border: 1px solid #333; margin-bottom: 15px; }
-    .price-tag { background: #ffcc00; color: #000; padding: 2px 10px; border-radius: 5px; font-weight: 800; }
-    .discount-tag { background: #ff0000; color: #fff; padding: 2px 10px; border-radius: 5px; font-size: 0.7rem; font-weight: 900; }
-    code { display: none !important; }
+    }}
+    .main-title {{ font-family: 'Cinzel', serif; color: #ffcc00; font-size: 3rem; text-align: center; margin-top: -100px; letter-spacing: 12px; text-shadow: 0 0 30px rgba(255,204,0,0.5); }}
+    .business-card {{ background: rgba(255,255,255,0.05); border-radius: 20px; border-left: 5px solid #ffcc00; padding: 25px; margin-bottom: 15px; border-top: 1px solid #333; }}
+    .product-box {{ background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 20px; border: 1px solid #444; margin-bottom: 15px; }}
+    .discount-tag {{ background: #ff0000; color: #fff; padding: 3px 10px; border-radius: 5px; font-weight: 900; font-size: 0.8rem; }}
+    .price-tag {{ color: #00ff00; font-weight: 900; font-size: 1.3rem; }}
+    code {{ display: none !important; }}
     </style>
     """, unsafe_allow_html=True)
 
 # --- LOGIN ---
 if not st.session_state.is_site_unlocked:
+    st.markdown('<div style="height:100px;"></div>', unsafe_allow_html=True)
     st.markdown('<h1 class="main-title">DÖRTYOL ÇARŞI</h1>', unsafe_allow_html=True)
-    _, log_col, _ = st.columns([2, 1.2, 2])
-    with log_col:
-        st.markdown('<div style="background:rgba(0,0,0,0.6); padding:30px; border-radius:30px; border:1px solid #ffcc0044; text-align:center;">', unsafe_allow_html=True)
-        st.write("<i style='color:#ffcc00;'>Hoş Geldiniz, Elite Portal Kapısı</i>", unsafe_allow_html=True)
+    _, col_log, _ = st.columns([2, 1.5, 2])
+    with col_log:
+        st.markdown('<div style="background:rgba(255,255,255,0.05); padding:40px; border-radius:30px; border:1px solid #ffcc0033; text-align:center;">', unsafe_allow_html=True)
+        st.write("<p style='font-family:Playfair Display; font-style:italic; color:#ffcc00; font-size:1.2rem;'>Hoş Geldiniz, Elite Portal Girişi</p>", unsafe_allow_html=True)
         pwd = st.text_input("", type="password", placeholder="Anahtar Kod")
         if st.button("PORTALI AKTİF ET"):
             if pwd == SITE_GIRIS_SIFRESI:
                 st.session_state.is_site_unlocked = True
                 st.rerun()
-            else: st.error("Kod Hatalı")
+            else: st.error("Erişim Kodu Hatalı!")
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -127,21 +152,19 @@ with tabs[0]:
                 st.rerun()
 
     st.divider()
-
     all_shops = verileri_yukle()
     
     if st.session_state.selected_shop_id is None:
-        # Filtreleme
         filtered = [s for s in all_shops if st.session_state.selected_cat == "Tümü" or s['sektor'] == st.session_state.selected_cat]
         for s in filtered:
             st.markdown(f"""
                 <div class="business-card">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span style="color:#ffcc00; font-weight:800; font-size:0.75rem;">{s['sektor'].upper()}</span>
-                        <span style="color:#ffcc00;">⭐ {s.get('puan', 0)}</span>
+                        <span style="color:#ffcc00;">⭐ {s.get('puan', 0)} / 10</span>
                     </div>
-                    <h2 style="color:#ffcc00; font-family:Cinzel; margin:5px 0;">{s['ad']}</h2>
-                    <p style="color:#ddd;">{s.get('icerik','')[:100]}...</p>
+                    <h2 style="color:#ffcc00; font-family:Cinzel; margin:10px 0;">{s['ad']}</h2>
+                    <p style="color:#ddd;">{s.get('icerik','')[:120]}...</p>
                     <small style="color:#666;">👁️ {s.get('tıklanma', 0)} Ziyaret</small>
                 </div>
             """, unsafe_allow_html=True)
@@ -150,7 +173,6 @@ with tabs[0]:
                 if col_ref: col_ref.document(s['id']).update({"tıklanma": firestore.Increment(1)})
                 st.rerun()
     else:
-        # Dükkan Detay
         shop = next((s for s in all_shops if s['id'] == st.session_state.selected_shop_id), None)
         if st.button("⬅️ LİSTEYE GERİ DÖN"): 
             st.session_state.selected_shop_id = None
@@ -158,92 +180,112 @@ with tabs[0]:
         
         if shop:
             st.markdown(f"""
-                <div style="background:rgba(0,0,0,0.8); padding:50px; border-radius:30px; border:2px solid #ffcc00; text-align:center;">
+                <div style="background:rgba(0,0,0,0.8); padding:50px; border-radius:35px; border:2px solid #ffcc00; text-align:center;">
                     <h1 style="color:#ffcc00; font-family:Cinzel; margin:0;">{shop['ad']}</h1>
                     <p style="font-style:italic; color:#bbb;">"{shop.get('icerik','')}"</p>
+                    <div style="display:flex; justify-content:center; gap:15px; margin-top:15px;">
+                        <span style="background:#222; padding:5px 15px; border-radius:50px; font-size:0.8rem; border:1px solid #ffcc00;">📍 {shop.get('adres','Belirtilmemiş')}</span>
+                        <span style="background:#222; padding:5px 15px; border-radius:50px; font-size:0.8rem; border:1px solid #ffcc00;">🕒 {shop.get('saatler','Belirtilmemiş')}</span>
+                    </div>
                 </div>
-                <h3 style="color:#ffcc00; margin-top:40px;">📋 ÜRÜN KATALOĞU</h3>
+                <h3 style="color:#ffcc00; margin-top:40px; font-family:Cinzel;">📋 ÜRÜN KATALOĞU</h3>
             """, unsafe_allow_html=True)
             
             for item in shop.get('urunler', []):
-                u_col1, u_col2 = st.columns([1, 4])
-                with u_col1:
+                u1, u2 = st.columns([1, 4])
+                with u1:
                     if item.get('img'): st.image(item['img'], use_container_width=True)
                     else: st.markdown("🖼️ Fotoğraf Yok")
-                with u_col2:
-                    disc_pct = 0
+                with u2:
+                    disc = 0
                     if item.get('eski_fiyat') and item.get('eski_fiyat') > item['fiyat']:
-                        disc_pct = int((1 - (item['fiyat'] / item['eski_fiyat'])) * 100)
-                    
+                        disc = int((1 - (item['fiyat'] / item['eski_fiyat'])) * 100)
                     st.markdown(f"""
                         <div class="product-box">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
                                 <h4 style="margin:0; color:#ffcc00;">{item['ad']}</h4>
                                 <div>
-                                    {f'<span style="text-decoration:line-through; color:#777; font-size:0.8rem; margin-right:10px;">{item["eski_fiyat"]} ₺</span>' if disc_pct > 0 else ''}
-                                    {f'<span class="discount-tag">%{disc_pct} İNDİRİM</span>' if disc_pct > 0 else ''}
+                                    {f'<span style="text-decoration:line-through; color:#777; font-size:0.8rem; margin-right:10px;">{item["eski_fiyat"]} ₺</span>' if disc > 0 else ''}
+                                    {f'<span class="discount-tag">%{disc} İNDİRİM</span>' if disc > 0 else ''}
                                     <span class="price-tag">{item['fiyat']} ₺</span>
                                 </div>
                             </div>
                             <p style="color:#ccc; font-size:0.9rem; margin-top:5px;">{item.get('detay','')}</p>
                         </div>
                     """, unsafe_allow_html=True)
-                    with st.expander("📜 Teknik Bilgiler & Tarihçe"): st.write(item.get('tarihce', 'Bilgi girilmemiş.'))
+                    with st.expander("📜 Bilgi & Tarihçe"): st.write(item.get('tarihce', '-'))
+            
+            # Yorumlar
+            st.divider()
+            st.markdown("### 💬 Müşteri Yorumları")
+            for y in shop.get('yorumlar', []):
+                st.markdown(f"**👤 Misafir:** {y['metin']} <br><small style='color:#666;'>{y['tarih']}</small>", unsafe_allow_html=True)
+            
+            with st.form("comment_v25"):
+                y_text = st.text_area("Yorum Yazın (Denetimli)")
+                if st.form_submit_button("GÖNDER"):
+                    if y_text:
+                        current_y = shop.get('yorumlar', [])
+                        current_y.append({"metin": icerik_temizle(y_text), "tarih": datetime.now().strftime("%d/%m/%Y %H:%M")})
+                        col_ref.document(shop['id']).update({"yorumlar": current_y})
+                        st.success("Yorumunuz paylaşıldı!"); time.sleep(1); st.rerun()
 
 # --- 3. ESNAF PANELİ ---
 with tabs[2]:
     if st.session_state.owner_shop_id is None:
         st.markdown("<h3 style='text-align:center;'>🔐 ESNAF DİJİTAL YÖNETİM</h3>", unsafe_allow_html=True)
-        l_ad = st.text_input("Dükkan Adı (Büyük/Küçük harf duyarsız)")
+        l_ad = st.text_input("Dükkan Adı (Duyarsız)")
         l_pwd = st.text_input("Şifre", type="password")
         if st.button("DASHBOARD'A GİR"):
             all_s = verileri_yukle()
             match = next((s for s in all_s if s['ad'].lower() == l_ad.lower() and s.get('sifre') == l_pwd), None)
             if match: st.session_state.owner_shop_id = match['id']; st.rerun()
-            else: st.error("Hatalı giriş!")
+            else: st.error("Hatalı Giriş!")
     else:
-        # ESNAF DASHBOARD
         shop_id = st.session_state.owner_shop_id
-        current_shops = verileri_yukle()
-        d = next((s for s in current_shops if s['id'] == shop_id), None)
+        current_data = verileri_yukle()
+        d = next((s for s in current_data if s['id'] == shop_id), None)
         
         st.subheader(f"📊 {d['ad']} Kontrol Merkezi")
         
-        with st.expander("➕ Menüye Yeni Ürün Ekle (Görsel Yükleme Destekli)"):
+        with st.expander("🏠 Profil Bilgilerini Güncelle"):
+            u_adr = st.text_input("Adres", value=d.get('adres',''))
+            u_saat = st.text_input("Çalışma Saatleri", value=d.get('saatler',''))
+            u_icr = st.text_area("Tanıtım Yazısı", value=d.get('icerik',''))
+            if st.button("PROFİLİ KAYDET"):
+                col_ref.document(shop_id).update({"adres": u_adr, "saatler": u_saat, "icerik": u_icr})
+                st.success("Kaydedildi!"); time.sleep(1); st.rerun()
+
+        with st.expander("➕ Yeni Ürün Ekle (Görsel Yükleme Destekli)"):
             u_ad = st.text_input("Ürün Adı")
-            u_fiy = st.number_input("Güncel Satış Fiyatı (₺)", min_value=0)
-            u_efiy = st.number_input("Eski Fiyat (İsteğe Bağlı)", min_value=0)
-            u_file = st.file_uploader("Ürün Fotoğrafı Seç (Sadece senin dükkanında saklanır)", type=['png', 'jpg', 'jpeg'])
+            u_fiy = st.number_input("Satış Fiyatı (₺)", min_value=0)
+            u_efiy = st.number_input("Eski Fiyat (Yüzde hesaplanır)", min_value=0)
+            u_file = st.file_uploader("Ürün Fotoğrafı (Sizin özel deponuza yüklenir)", type=['png', 'jpg', 'jpeg'])
             u_det = st.text_input("Kısa Özet")
-            u_tar = st.text_area("Teknik Bilgiler / Açıklama")
+            u_tar = st.text_area("Teknik Bilgiler / Tarihçe")
             
             if st.button("ÜRÜNÜ YAYINLA"):
-                with st.spinner("Dosya güvenli bölgeye yükleniyor..."):
+                with st.spinner("Görsel güvenli bölgeye aktarılıyor..."):
                     img_url = resim_yukle(d['ad'], u_file) if u_file else None
                     prods = d.get('urunler', [])
-                    prods.append({
-                        "ad": u_ad, "fiyat": u_fiy, "eski_fiyat": u_efiy, 
-                        "img": img_url, "detay": u_det, "tarihce": u_tar
-                    })
+                    prods.append({"ad": u_ad, "fiyat": u_fiy, "eski_fiyat": u_efiy, "img": img_url, "detay": u_det, "tarihce": u_tar})
                     col_ref.document(shop_id).update({"urunler": prods})
-                    st.success("Tebrikler! Ürün vitrine çıktı.")
-                    time.sleep(1)
-                    st.rerun()
+                    st.success("Ürün vitrine çıktı!"); time.sleep(1); st.rerun()
 
         if st.button("🚪 PANELİ KAPAT"):
             st.session_state.owner_shop_id = None
             st.rerun()
 
-# --- DİĞER SEKMELER (SABİT) ---
+# --- DİĞERLERİ ---
 with tabs[1]:
     st.markdown("<h3 style='text-align:center;'>🏛️ KURUMSAL KAYIT</h3>", unsafe_allow_html=True)
-    with st.form("reg_v24"):
-        n_ad = st.text_input("Dükkan Adı*")
+    with st.form("reg_v25"):
+        n_ad = st.text_input("İşletme Adı*")
         n_sek = st.selectbox("Sektör", [k['ad'] for k in kategoriler if k['ad'] != "Tümü"])
         n_pwd = st.text_input("Giriş Şifresi*", type="password")
         if st.form_submit_button("📜 KAYIT OL"):
             if n_ad and n_pwd and col_ref:
-                col_ref.add({"ad": n_ad, "sektor": n_sek, "sifre": n_pwd, "puan": 0, "tıklanma": 0, "urunler": [], "icerik": "Dörtyol Elite Mağazası."})
+                col_ref.add({"ad": n_ad, "sektor": n_sek, "sifre": n_pwd, "puan": 0, "tıklanma": 0, "urunler": [], "yorumlar": [], "icerik": "Elite Mağaza.", "adres": "", "saatler": ""})
                 st.success("Başarılı!"); time.sleep(1); st.rerun()
 
 with tabs[3]:
@@ -255,4 +297,4 @@ with tabs[3]:
                 if st.button(f"SİL: {i['ad']}", key=f"del_{i['id']}"):
                     col_ref.document(i['id']).delete(); st.rerun()
 
-st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.3; font-size:0.7rem;'>© {GUNCEL_YIL} Albayrax Elite Portal | v24.0 Secure Storage</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.3; font-size:0.7rem;'>© {GUNCEL_YIL} Albayrax Elite Portal | v25.0 Storage Resolved</div>", unsafe_allow_html=True)
