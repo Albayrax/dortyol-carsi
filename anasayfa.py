@@ -7,14 +7,15 @@ import time
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Dörtyol Dijital Çarşı 2026",
+    page_title="Dörtyol Çarşı 2026",
     page_icon="🍊",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- AYARLAR ---
+# --- AYARLAR (Burayı Kendine Göre Düzenle) ---
 ADMIN_SIFRE = "dortyol31"
+SITE_GIRIS_SIFRESI = "dortyol2026"  # Siteyi tamamen gizlemek için ana şifre
 APP_ID = "dortyol-carsi-v1"
 GUNCEL_YIL = "2026"
 
@@ -26,7 +27,7 @@ if not firebase_admin._apps:
             cred = credentials.Certificate(key_dict)
             firebase_admin.initialize_app(cred)
     except Exception as e:
-        st.error(f"Bağlantı Hatası: {e}")
+        st.error(f"Veri Bağlantı Hatası: {e}")
 
 db = None
 col_ref = None
@@ -36,27 +37,34 @@ try:
 except:
     pass
 
+# --- SESSION STATE (Giriş Durumları) ---
+if 'is_site_unlocked' not in st.session_state:
+    st.session_state.is_site_unlocked = False # Site kilidi (Halka kapalı mod)
+if 'is_admin' not in st.session_state:
+    st.session_state.is_admin = False # Yönetici modu
+if 'selected_id' not in st.session_state:
+    st.session_state.selected_id = None
+
 # --- FONKSİYONLAR ---
 def verileri_yukle():
     if db and col_ref:
         try:
-            # RULE 2: Basit sorgu, sıralama JS tarafında yapılacak
             docs = col_ref.stream()
             return [dict(doc.to_dict(), id=doc.id) for doc in docs]
         except:
             return []
     return []
 
-# --- ULTRA PREMIUM & INTERACTIVE CSS ---
+# --- PREMİUM TASARIM & EFEKTLER (CSS) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@300;400;600&display=swap');
     
     /* Hareketli Arka Plan */
     .stApp {{
-        background: linear-gradient(-45deg, #1a0000, #3d0000, #000000, #220000);
+        background: linear-gradient(-45deg, #0f0000, #2b0000, #000000, #1a0000);
         background-size: 400% 400%;
-        animation: gradient 15s ease infinite;
+        animation: gradient 12s ease infinite;
         color: #ffffff !important;
         font-family: 'Montserrat', sans-serif;
     }}
@@ -67,262 +75,229 @@ st.markdown(f"""
         100% {{ background-position: 0% 50%; }}
     }}
 
-    /* Yüzen Baloncuk Efekti */
-    .bubble-bg {{
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        z-index: -1;
-        overflow: hidden;
-    }}
-    .bubble {{
-        position: absolute;
-        bottom: -100px;
-        width: 40px; height: 40px;
-        background: rgba(255, 204, 0, 0.1);
-        border-radius: 50%;
-        animation: rise 10s infinite ease-in;
-    }}
-    @keyframes rise {{
-        0% {{ bottom: -100px; transform: translateX(0); }}
-        50% {{ transform: translateX(100px); }}
-        100% {{ bottom: 1080px; transform: translateX(-200px); }}
-    }}
-
-    /* Header Tasarımı */
-    .header-section {{
-        padding: 20px 0;
+    /* Küçük ve Zarif Başlık */
+    .header-compact {{
         text-align: center;
-        margin-top: -50px;
+        margin-top: -70px;
+        padding-bottom: 20px;
     }}
-    .header-section h2 {{
+    .header-compact h2 {{
         font-family: 'Cinzel', serif;
-        font-size: 2.8rem;
+        font-size: 2.2rem;
         color: #ffcc00;
-        letter-spacing: 5px;
-        margin-bottom: 5px;
-        text-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
-    }}
-    .header-section p {{
-        font-size: 0.9rem;
-        letter-spacing: 3px;
-        color: #ddd;
-        opacity: 0.8;
+        letter-spacing: 4px;
+        margin: 0;
+        text-shadow: 0 0 15px rgba(255, 204, 0, 0.4);
     }}
 
     /* Premium Kartlar */
     .dukkan-card {{
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(15px);
-        padding: 25px;
-        border-radius: 20px;
-        border: 1px solid rgba(255, 204, 0, 0.2);
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        margin-bottom: 20px;
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid rgba(255, 204, 0, 0.15);
+        transition: 0.4s;
+        margin-bottom: 15px;
+        text-align: center;
     }}
     .dukkan-card:hover {{
         border: 1px solid #ffcc00;
+        transform: translateY(-5px);
         background: rgba(255, 204, 0, 0.05);
-        transform: scale(1.03);
     }}
 
     /* Butonlar */
     .stButton>button {{
-        background: linear-gradient(90deg, #ffcc00 0%, #ff9900 100%) !important;
+        background: linear-gradient(90deg, #ffcc00 0%, #ffaa00 100%) !important;
         color: #000 !important;
-        border-radius: 30px !important;
+        border-radius: 20px !important;
         border: none !important;
         font-weight: 700 !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 10px 20px !important;
+        width: 100%;
     }}
 
-    /* Form & Input */
-    input, textarea {{
-        background: rgba(255,255,255,0.1) !important;
-        border: 1px solid rgba(255,204,0,0.3) !important;
-        border-radius: 10px !important;
-        color: white !important;
-    }}
-
-    /* Sözleşme Alanı */
-    .agreement-box {{
-        background: rgba(0,0,0,0.4);
+    /* Sözleşme Kutusu */
+    .contract-view {{
+        background: rgba(0,0,0,0.3);
         padding: 15px;
         border-radius: 10px;
-        border: 1px dashed #ffcc00;
-        font-size: 0.85rem;
-        max-height: 150px;
-        overflow-y: scroll;
-        margin-bottom: 10px;
-    }}
-    
-    /* Footer */
-    .footer {{
-        text-align: center;
-        padding: 50px 0;
-        color: #666;
+        border: 1px solid #444;
         font-size: 0.8rem;
+        color: #ccc;
+        height: 120px;
+        overflow-y: scroll;
+        margin-bottom: 15px;
     }}
     </style>
-    
-    <div class="bubble-bg">
-        <div class="bubble" style="left:10%; width:80px; height:80px; animation-duration:8s;"></div>
-        <div class="bubble" style="left:20%; width:40px; height:40px; animation-duration:12s; animation-delay:2s;"></div>
-        <div class="bubble" style="left:70%; width:60px; height:60px; animation-duration:10s; animation-delay:4s;"></div>
-        <div class="bubble" style="left:85%; width:30px; height:30px; animation-duration:15s;"></div>
-    </div>
     """, unsafe_allow_html=True)
 
-# --- UYGULAMA İÇERİĞİ ---
-if 'selected_id' not in st.session_state:
-    st.session_state.selected_id = None
+# --- GÜVENLİK DUVARI (SİTE GİRİŞİ) ---
+if not st.session_state.is_site_unlocked:
+    _, lock_col, _ = st.columns([1, 2, 1])
+    with lock_col:
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align:center; color:#ffcc00;'>🔒 ÖZEL ERİŞİM</h2>", unsafe_allow_html=True)
+        st.write("Bu site şu an hazırlık aşamasındadır. Devam etmek için giriş anahtarını girin.")
+        giris_deneme = st.text_input("Site Anahtarı", type="password")
+        if st.button("SİTEYİ AÇ"):
+            if giris_deneme == SITE_GIRIS_SIFRESI:
+                st.session_state.is_site_unlocked = True
+                st.rerun()
+            else:
+                st.error("Hatalı anahtar!")
+    st.stop() # Site açılana kadar alt tarafı yükleme
 
-# HEADER
-st.markdown(f"""
-    <div class="header-section">
+# --- ANA UYGULAMA İÇERİĞİ ---
+
+# BAŞLIK
+st.markdown("""
+    <div class="header-compact">
         <h2>DÖRTYOL ÇARŞI</h2>
-        <p>PREMIUM ESNAF AĞI & LEZZET DURAKLARI</p>
+        <p style='font-size:0.7rem; letter-spacing:2px; color:#aaa;'>PREMIUM DIGITAL ECOSYSTEM</p>
     </div>
     """, unsafe_allow_html=True)
 
-# ORTALANMIŞ İÇERİK İÇİN COLUMNS
-_, center_col, _ = st.columns([1, 6, 1])
+# MERKEZİ PANEL
+_, main_col, _ = st.columns([1, 8, 1])
 
-with center_col:
+with main_col:
     tabs = st.tabs(["💎 ÇARŞIYI KEŞFET", "🏢 KURUMSAL KAYIT", "🔑 YÖNETİM"])
 
-    # 1. SEKME: KEŞFET
+    # --- 1. KEŞFET SEKMESİ ---
     with tabs[0]:
         if st.session_state.selected_id is None:
             dukkanlar = verileri_yukle()
             
-            # Filtre Paneli
-            f1, f2 = st.columns([3,1])
+            # Arama ve Filtre
+            f1, f2 = st.columns([3, 1])
             with f1:
-                search = st.text_input("🔍 Aradığınız esnaf veya ürün...", placeholder="Örn: Portakal, Kebap, Altın...")
+                search = st.text_input("🔍 Esnaf veya lezzet ara...", placeholder="Örn: Kebap, Künefe, Kuyumcu")
             with f2:
-                cat = st.selectbox("Sektör Seçin", ["Tümü", "Tatlıcı", "Kebapçı", "Kuyumcu", "Giyim", "Gıda", "Diğer"])
+                cat = st.selectbox("Kategori", ["Tümü", "Tatlıcı", "Kebapçı", "Kuyumcu", "Giyim", "Gıda", "Diğer"])
 
-            # Filtreleme
             filtered = [d for d in dukkanlar if (search.lower() in d['ad'].lower() or search.lower() in d['urun'].lower()) and (cat == "Tümü" or d['sektor'] == cat)]
             
             if not filtered:
-                st.info("Henüz bu kategoride bir kayıt bulunmuyor.")
+                st.info("Henüz bu kategoride bir kayıt bulunmuyor. İlk dükkanı siz ekleyin!")
             
-            # Grid
-            grid_cols = st.columns(2)
+            # Listeleme
+            g1, g2 = st.columns(2)
             for i, d in enumerate(filtered):
-                with grid_cols[i % 2]:
+                with (g1 if i % 2 == 0 else g2):
                     st.markdown(f"""
                     <div class="dukkan-card">
-                        <span style="color:#ffcc00; font-size:0.7rem; font-weight:700;">{d['sektor'].upper()}</span>
-                        <h3 style="margin:5px 0; color:white;">{d['ad']}</h3>
-                        <p style="font-size:0.9rem; color:#bbb;"><b>İmza Lezzet:</b> {d['urun']}</p>
+                        <small style="color:#ffcc00;">{d['sektor'].upper()}</small>
+                        <h4 style="margin:5px 0;">{d['ad']}</h4>
+                        <p style="font-size:0.8rem; color:#aaa;">🌟 {d['urun']}</p>
                     </div>
                     """, unsafe_allow_html=True)
-                    if st.button(f"DETAYLARI İNCELE: {d['ad']}", key=f"view_{d['id']}"):
+                    if st.button(f"İNCELE: {d['ad']}", key=f"v_{d['id']}"):
                         st.session_state.selected_id = d
                         st.rerun()
         else:
-            # DETAY GÖRÜNÜMÜ
+            # DETAY SAYFASI
             d = st.session_state.selected_id
-            if st.button("⬅️ LİSTEYE DÖN"):
+            if st.button("⬅️ ÇARŞI LİSTESİNE DÖN"):
                 st.session_state.selected_id = None
                 st.rerun()
             
             st.markdown(f"""
-            <div style="background:rgba(0,0,0,0.5); padding:30px; border-radius:30px; border:2px solid #ffcc00;">
-                <h1 style="color:#ffcc00; text-align:center;">{d['ad']}</h1>
-                <p style="text-align:center; letter-spacing:2px;">DÖRTYOL / HATAY ESNAFI</p>
-                <hr style="border-color:rgba(255,204,0,0.3);">
-                <div style="display:flex; justify-content:space-around; text-align:center; padding:20px 0;">
-                    <div><h5 style="color:#ffcc00;">İmza Ürün</h5><p>{d['urun']}</p></div>
-                    <div><h5 style="color:#ffcc00;">Kategori</h5><p>{d['sektor']}</p></div>
+            <div style="background:rgba(0,0,0,0.4); padding:30px; border-radius:20px; border:1px solid #ffcc00;">
+                <h2 style="color:#ffcc00; text-align:center; margin:0;">{d['ad']}</h2>
+                <p style="text-align:center; font-size:0.8rem; letter-spacing:2px; color:#888;">KURUMSAL ESNAF PROFİLİ</p>
+                <hr style="border-color:#333;">
+                <div style="display:flex; justify-content:space-around; text-align:center;">
+                    <div><h6 style="color:#ffcc00; margin:0;">BAŞLICA HİZMET</h6><p>{d['urun']}</p></div>
+                    <div><h6 style="color:#ffcc00; margin:0;">SEKTÖR</h6><p>{d['sektor']}</p></div>
                 </div>
-                <p style="font-style:italic; text-align:center; padding:20px;">"{d['icerik']}"</p>
+                <p style="background:rgba(255,255,255,0.03); padding:20px; border-radius:10px; font-style:italic;">{d['icerik']}</p>
             </div>
             """, unsafe_allow_html=True)
             
-            wa_num = d['tel'].replace(" ", "").replace("+", "")
+            wa_link = f"https://wa.me/{d['tel'].replace(' ','').replace('+','')}"
             st.markdown(f"""
-                <a href="https://wa.me/{wa_num}" target="_blank" style="text-decoration:none;">
-                    <button style="width:100%; background:#25D366; color:white; border:none; padding:15px; border-radius:15px; cursor:pointer; font-weight:bold; font-size:1rem; margin-top:10px;">
-                        💚 WHATSAPP ÜZERİNDEN İLETİŞİME GEÇ
+                <a href="{wa_link}" target="_blank" style="text-decoration:none;">
+                    <button style="width:100%; background:#25D366; color:white; border:none; padding:15px; border-radius:15px; font-weight:bold; cursor:pointer;">
+                        🟢 WHATSAPP İLE İLETİŞİME GEÇ
                     </button>
                 </a>
             """, unsafe_allow_html=True)
 
-    # 2. SEKME: ESNAF KAYDI (KURUMSAL)
+    # --- 2. KAYIT SEKMESİ ---
     with tabs[1]:
-        st.markdown("<h3 style='text-align:center; color:#ffcc00;'>YENİ ESNAF BAŞVURUSU</h3>", unsafe_allow_html=True)
-        
-        with st.form("kurumsal_kayit"):
+        st.markdown("<h4 style='text-align:center; color:#ffcc00;'>YENİ ESNAF KAYIT FORMU</h4>", unsafe_allow_html=True)
+        with st.form("premium_register"):
             c1, c2 = st.columns(2)
             with c1:
-                new_ad = st.text_input("İşletme Adı*")
-                new_tel = st.text_input("Kurumsal İletişim (05xx...)")
+                n_ad = st.text_input("İşletme Adı*")
+                n_tel = st.text_input("WhatsApp İletişim (05xx...)")
             with c2:
-                new_sek = st.selectbox("Faaliyet Alanı", ["Tatlıcı", "Kebapçı", "Kuyumcu", "Giyim", "Gıda", "Teknoloji", "Diğer"])
-                new_urn = st.text_input("İmza Ürününüz / Hizmetiniz")
+                n_sek = st.selectbox("Sektör", ["Tatlıcı", "Kebapçı", "Kuyumcu", "Giyim", "Gıda", "Teknoloji", "Diğer"])
+                n_urn = st.text_input("İmza Ürününüz / Hizmetiniz")
             
-            new_tanitim = st.text_area("İşletme Hikayesi ve Tanıtım")
+            n_tanitim = st.text_area("İşletme Tanıtımı ve Hikayesi")
             
-            st.markdown("---")
-            st.markdown("**ESNAF HİZMET VE KALİTE SÖZLEŞMESİ**")
+            st.markdown("**📜 KURUMSAL HİZMET SÖZLEŞMESİ**")
             st.markdown("""
-                <div class="agreement-box">
-                    1. İşbu sözleşme, Dörtyol Dijital Çarşı platformunda yer alan esnafın hizmet kalitesini korumayı amaçlar.<br>
-                    2. Esnaf, sunduğu ürün ve hizmetlerde dürüstlük ve kalite esaslarına uyacağını taahhüt eder.<br>
-                    3. Müşteri memnuniyetini ön planda tutacağını, verilen iletişim numaralarından makul sürelerde yanıt vereceğini kabul eder.<br>
-                    4. Platformun bir yardımlaşma ve dijitalleşme projesi olduğunu bilerek, topluluk kurallarına aykırı içerik paylaşmayacağını onaylar.<br>
-                    5. Hatalı veya yanıltıcı bilgi girişi durumunda üyeliğinin askıya alınabileceğini peşinen kabul eder.
+                <div class="contract-view">
+                    1. Dörtyol Dijital Çarşı, esnafın dijitalleşmesini destekleyen bir prestij platformudur.<br>
+                    2. Kayıt olan esnaf, paylaştığı bilgilerin doğruluğunu ve kurumsal etik kurallarına uyacağını taahhüt eder.<br>
+                    3. Müşteri memnuniyeti ve güvenliği esastır. Hatalı veya yanıltıcı bilgi girişi dükkanın sistemden kaldırılmasına neden olur.<br>
+                    4. Platform, esnaf ve müşteri arasındaki ticari ilişkiden sorumlu değildir, sadece bir köprü görevi görür.<br>
+                    5. İşbu sözleşme, dijital onay ile yürürlüğe girmiş kabul edilir.
                 </div>
             """, unsafe_allow_html=True)
             
-            onay = st.checkbox("Sözleşme maddelerini okudum ve dijital imzamla onaylıyorum.")
+            check = st.checkbox("Hizmet sözleşmesini okudum, işletmem adına onaylıyorum.")
             
-            if st.form_submit_button("📜 BAŞVURUYU TAMAMLA"):
-                if not onay:
-                    st.error("Lütfen sözleşmeyi onaylayın.")
-                elif not new_ad or not new_tel:
-                    st.error("Yıldızlı alanlar zorunludur.")
+            if st.form_submit_button("📜 SÖZLEŞMEYİ İMZALA VE KAYDET"):
+                if not check:
+                    st.warning("Lütfen sözleşmeyi onaylayın.")
+                elif not n_ad or not n_tel:
+                    st.error("Dükkan adı ve telefon alanları zorunludur.")
                 elif db and col_ref:
-                    data = {
-                        "ad": new_ad, "tel": new_tel, "sektor": new_sek, 
-                        "urun": new_urn, "icerik": new_tanitim,
-                        "tarih": datetime.now().strftime("%d/%m/%Y"),
-                        "onayli": True
-                    }
-                    col_ref.add(data)
-                    st.success("Tebrikler! Dükkanınız Dörtyol'un dijital çarşısına başarıyla eklendi.")
+                    res = col_ref.add({
+                        "ad": n_ad, "tel": n_tel, "sektor": n_sek, "urun": n_urn, 
+                        "icerik": n_tanitim, "tarih": datetime.now().strftime("%d/%m/%Y")
+                    })
+                    st.success("Tebrikler! Dörtyol Çarşı ailesine katıldınız.")
                     st.balloons()
                     time.sleep(2)
                     st.rerun()
 
-    # 3. SEKME: YÖNETİM
+    # --- 3. YÖNETİM SEKMESİ ---
     with tabs[2]:
-        st.markdown("<h3 style='text-align:center; color:#ffcc00;'>ADMİN KONTROL PANELİ</h3>", unsafe_allow_html=True)
-        pwd = st.text_input("Giriş Anahtarı", type="password")
-        
-        if pwd == ADMIN_SIFRE:
-            st.success("Hoş geldin Albayrax. Sistem Kontrol Altında.")
-            all_data = verileri_yukle()
-            for item in all_data:
-                with st.expander(f"⚙️ {item['ad']} - {item.get('tarih','-')}"):
-                    st.write(f"İletişim: {item['tel']}")
-                    if st.button(f"🗑️ BU DÜKKANI SİSTEMDEN KALDIR", key=f"del_{item['id']}"):
+        if not st.session_state.is_admin:
+            st.markdown("<h4 style='text-align:center;'>🔐 YÖNETİCİ GİRİŞİ</h4>", unsafe_allow_html=True)
+            admin_pwd = st.text_input("Yönetici Şifresi", type="password")
+            if st.button("SİSTEME GİRİŞ YAP"):
+                if admin_pwd == ADMIN_SIFRE:
+                    st.session_state.is_admin = True
+                    st.rerun()
+                else:
+                    st.error("Hatalı yönetici şifresi!")
+        else:
+            st.success("👑 YÖNETİCİ MODU AKTİF - Merhaba Albayrax")
+            if st.button("Çıkış Yap"):
+                st.session_state.is_admin = False
+                st.rerun()
+            
+            st.divider()
+            yonetim_data = verileri_yukle()
+            for item in yonetim_data:
+                with st.expander(f"🛠️ {item['ad']} ({item.get('tarih', '-')})"):
+                    st.write(f"Tel: {item['tel']}")
+                    if st.button(f"DÜKKANI KALDIR: {item['ad']}", key=f"del_{item['id']}"):
                         col_ref.document(item['id']).delete()
-                        st.warning(f"{item['ad']} silindi.")
+                        st.warning("Dükkan sistemden silindi.")
                         st.rerun()
-        elif pwd:
-            st.error("Hatalı Giriş Anahtarı! Lütfen tekrar deneyin.")
 
-# FOOTER
+# ALT BİLGİ
 st.markdown(f"""
-    <div class="footer">
-        <p>© {GUNCEL_YIL} Albayrax Premium Digital Architecture | Dörtyol / Hatay</p>
-        <p style="opacity:0.5;">Geleceğin Esnaf Ağı Yayında</p>
-        <div style="height:100px;"></div>
+    <div style="text-align:center; padding-top:100px; opacity:0.3; font-size:0.7rem;">
+        © {GUNCEL_YIL} Albayrax Premium Architecture | Dörtyol / Hatay<br>
+        v2.0 Beta - 2026 Vision
     </div>
+    <div style="height:50px;"></div>
     """, unsafe_allow_html=True)
