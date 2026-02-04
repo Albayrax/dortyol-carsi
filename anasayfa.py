@@ -20,23 +20,56 @@ SITE_GIRIS_SIFRESI = "dortyol2026"
 APP_ID = "dortyol-carsi-v1"
 GUNCEL_YIL = "2026"
 
-# --- FIREBASE BAĞLANTISI ---
+# --- FIREBASE BAĞLANTISI VE STORAGE KÖKTEN ÇÖZÜM ---
 if not firebase_admin._apps:
     try:
         if "firebase" in st.secrets:
             key_dict = json.loads(st.secrets["firebase"]["key"])
-            project_id = key_dict.get("project_id")
-            bucket_name = f"{project_id}.firebasestorage.app" 
+            p_id = key_dict.get("project_id")
+            
+            # Firebase'in iki tip depo ismi olabilir, ikisini de hazırlıyoruz
+            # Genellikle eski projeler .appspot.com, yeniler .firebasestorage.app kullanır
+            bucket_name_1 = f"{p_id}.appspot.com"
+            bucket_name_2 = f"{p_id}.firebasestorage.app"
+            
             cred = credentials.Certificate(key_dict)
-            firebase_admin.initialize_app(cred, {'storageBucket': bucket_name})
-    except:
+            
+            # Önce birinci formatla deniyoruz
+            try:
+                firebase_admin.initialize_app(cred, {'storageBucket': bucket_name_1})
+            except:
+                # Olmazsa ikinci formatla deniyoruz
+                firebase_admin.initialize_app(cred, {'storageBucket': bucket_name_2})
+    except Exception as e:
+        st.error(f"Bağlantı hatası: {e}")
+
+# Servisleri güvenli şekilde başlat
+db = None
+col_ref = None
+bucket = None
+
+if firebase_admin._apps:
+    try:
+        db = firestore.client()
+        col_ref = db.collection("artifacts").document(APP_ID).collection("public").document("data").collection("dukkanlar")
+        
+        # Bucket'ı açıkça ismiyle çekiyoruz (Hatanın asıl çözümü burası)
+        key_dict = json.loads(st.secrets["firebase"]["key"])
+        p_id = key_dict.get("project_id")
+        
+        # Streamlit loglarında bucket hatası almamak için açık isim belirtiyoruz
+        try:
+            bucket = storage.bucket(f"{p_id}.appspot.com")
+            # Bucket'ın varlığını kontrol et, yoksa diğerini dene
+            if not bucket.exists():
+                bucket = storage.bucket(f"{p_id}.firebasestorage.app")
+        except:
+            bucket = storage.bucket(f"{p_id}.firebasestorage.app")
+            
+    except Exception as e:
         pass
 
-db = firestore.client() if firebase_admin._apps else None
-col_ref = db.collection("artifacts").document(APP_ID).collection("public").document("data").collection("dukkanlar") if db else None
-bucket = storage.bucket() if firebase_admin._apps else None
-
-# --- SESSION STATE ---
+# --- SESSION STATE (DURUM YÖNETİMİ) ---
 states = {
     'is_site_unlocked': False,
     'selected_cat': "Tümü",
@@ -48,42 +81,22 @@ for key, val in states.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
-# --- DÖRTYOL GERÇEK VERİ TABANI (DETAYLI) ---
+# --- DÖRTYOL VERİ TABANI ---
 DORTYOL_DATABASE = [
     {
         "ad": "Kadir Teknoloji", "sektor": "Teknoloji", "sifre": "tekno2026", "puan": 10.0, "tıklanma": 0,
-        "icerik": "Dörtyol'un dijital dönüşüm merkezi. Yazılım çözümleri ve donanım desteği.",
+        "icerik": "Dörtyol'un dijital dönüşüm merkezi. Yazılım ve donanım desteği.",
         "tel": "0531 000 00 00", "adres": "Çarşı Merkezi", "saatler": "09:00 - 19:00", "urunler": []
     },
     {
         "ad": "Dörtyol Devlet Hastanesi", "sektor": "Sağlık", "sifre": "saglik2026", "puan": 10.0, "tıklanma": 0,
-        "icerik": "Bölge halkına uzman kadrosuyla 7/24 hizmet veren tam teşekküllü sağlık merkezi.",
+        "icerik": "Uzman kadrosuyla 7/24 hizmet veren sağlık merkezi.",
         "tel": "0326 712 12 12", "adres": "Numune Evler Mah.", "saatler": "24 Saat Açık", "urunler": []
     },
     {
-        "ad": "Has Turizm / Jet Turizm", "sektor": "Ulaşım", "sifre": "ulasim2026", "puan": 9.5, "tıklanma": 0,
-        "icerik": "Dörtyol Otogarı'ndan Türkiye'nin her yerine konforlu ulaşım ve bilet işlemleri.",
-        "tel": "0326 712 00 00", "adres": "Dörtyol Otogarı", "saatler": "06:00 - 00:00", "urunler": []
-    },
-    {
         "ad": "Aydın Kuyumculuk", "sektor": "Yatırım", "sifre": "aydin2026", "puan": 9.9, "tıklanma": 0,
-        "icerik": "Güvenilir altın ticareti ve yatırım danışmanlığı. Çeyrek, tam ve gram altın seçenekleri.",
+        "icerik": "Güvenilir altın ticareti ve yatırım danışmanlığı.",
         "tel": "0532 000 00 00", "adres": "Kuyumcular Çarşısı", "saatler": "08:30 - 18:30", "urunler": []
-    },
-    {
-        "ad": "Antik Kral Künefe", "sektor": "Tatlıcı", "sifre": "kral2026", "puan": 9.8, "tıklanma": 0,
-        "icerik": "Tescilli Dörtyol lezzeti. Odun ateşinde sıcak servis künefe.",
-        "tel": "0532 111 22 33", "adres": "Atatürk Caddesi", "saatler": "10:00 - 23:00", "urunler": []
-    },
-    {
-        "ad": "Ferah Kebap Salonu", "sektor": "Kebapçı", "sifre": "ferah2026", "puan": 9.7, "tıklanma": 0,
-        "icerik": "Gerçek zırh kıyması ve Hatay usulü mezeleriyle kebap şöleni.",
-        "tel": "0326 712 33 44", "adres": "İnönü Caddesi", "saatler": "11:00 - 22:00", "urunler": []
-    },
-    {
-        "ad": "Ziraat / İş Bankası / Akbank", "sektor": "Yatırım", "sifre": "banka2026", "puan": 9.4, "tıklanma": 0,
-        "icerik": "Dörtyol Şubeleri; kredi, mevduat ve tüm finansal yatırım hizmetleri.",
-        "tel": "444 00 00", "adres": "Çarşı Meydanı", "saatler": "09:00 - 17:00", "urunler": []
     }
 ]
 
@@ -114,7 +127,6 @@ def resim_yukle(shop_name, file_obj):
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@300;400;600;800&family=Playfair+Display:ital,wght@1,600&display=swap');
-    
     .stApp {{
         background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.85)), 
                     url("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1920");
@@ -140,7 +152,7 @@ if not st.session_state.is_site_unlocked:
             if pwd == SITE_GIRIS_SIFRESI:
                 st.session_state.is_site_unlocked = True
                 st.rerun()
-            else: st.error("Erişim Kodu Hatalı!")
+            else: st.error("Kod Hatalı!")
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -180,9 +192,9 @@ with tabs[0]:
             """, unsafe_allow_html=True)
             if st.button(f"🏪 {s.get('ad')} Detaylarını Gör", key=f"v_{s.get('id', s.get('ad'))}"):
                 st.session_state.selected_shop_id = s.get('id', s.get('ad'))
+                if col_ref and 'id' in s: col_ref.document(s['id']).update({"tıklanma": firestore.Increment(1)})
                 st.rerun()
     else:
-        # Shop Detail
         shop = next((s for s in all_shops if (s.get('id') == st.session_state.selected_shop_id or s.get('ad') == st.session_state.selected_shop_id)), None)
         if st.button("⬅️ LİSTEYE GERİ DÖN"): st.session_state.selected_shop_id = None; st.rerun()
         if shop:
@@ -190,10 +202,6 @@ with tabs[0]:
                 <div style="background:rgba(0,0,0,0.8); padding:50px; border-radius:35px; border:2px solid #ffcc00; text-align:center;">
                     <h1 style="color:#ffcc00; font-family:Cinzel; margin:0;">{shop['ad']}</h1>
                     <p style="font-style:italic; color:#bbb;">"{shop.get('icerik','')}"</p>
-                    <div style="display:flex; justify-content:center; gap:15px; margin-top:15px;">
-                        <span style="background:#222; padding:5px 15px; border-radius:50px; font-size:0.8rem; border:1px solid #ffcc00;">📍 {shop.get('adres','')}</span>
-                        <span style="background:#222; padding:5px 15px; border-radius:50px; font-size:0.8rem; border:1px solid #ffcc00;">🕒 {shop.get('saatler','')}</span>
-                    </div>
                 </div>
             """, unsafe_allow_html=True)
             for item in shop.get('urunler', []):
@@ -219,12 +227,10 @@ with tabs[3]:
     pwd = st.text_input("Yönetici Girişi", type="password")
     if pwd == ADMIN_SIFRE:
         st.success("Admin Yetkisi Onaylandı!")
-        st.write("Buradan dükkanları denetleyebilir ve performans verilerini takip edebilirsin.")
         all_d = verileri_yukle()
         for i in all_d:
             with st.expander(i.get('ad','')):
-                st.write(f"Sektör: {i.get('sektor')} | Şifre: {i.get('sifre')}")
                 if st.button(f"SİL: {i.get('ad')}", key=f"del_{i.get('ad')}"):
                     if col_ref and 'id' in i: col_ref.document(i['id']).delete(); st.rerun()
 
-st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.3; font-size:0.7rem;'>© {GUNCEL_YIL} Albayrax Elite Portal | v27.0 Dörtyol Edition</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.3; font-size:0.7rem;'>© {GUNCEL_YIL} Albayrax Elite Portal | v28.0 Final Storage Fix</div>", unsafe_allow_html=True)
