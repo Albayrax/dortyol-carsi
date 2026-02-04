@@ -5,9 +5,9 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import time
 
-# --- SAYFA YAPILANDIRMASI (MARKETING READY) ---
+# --- SAYFA YAPILANDIRMASI (PORTAL READY) ---
 st.set_page_config(
-    page_title="Dörtyol Çarşı 2026 | Elite Esnaf Ağı",
+    page_title="Dörtyol Çarşı 2026 | Esnaf Portalı",
     page_icon="🍊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -64,337 +64,276 @@ def verileri_yukle():
         except: return []
     return []
 
-# --- ULTRA PREMIUM DESIGN SYSTEM (CSS) ---
-# Kategori bazlı renk ve arka plan dinamikleri
-THEMES = {
-    "Tümü": {"bg": "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=1920", "accent": "#ffcc00"},
-    "Tatlıcı": {"bg": "https://images.unsplash.com/photo-1571214050215-08e92a8397a7?q=80&w=1920", "accent": "#ffa500"},
-    "Kebapçı": {"bg": "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1920", "accent": "#ff4500"},
-    "Kuyumcu": {"bg": "https://images.unsplash.com/photo-1588444839138-0422329d145f?q=80&w=1920", "accent": "#d4af37"},
-    "Otomotiv": {"bg": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1920", "accent": "#ffffff"},
-    "Hırdavat": {"bg": "https://images.unsplash.com/photo-1530124560676-41bc1275d428?q=80&w=1920", "accent": "#708090"}
-}
-current_theme = THEMES.get(st.session_state.selected_cat, THEMES["Tümü"])
-
+# --- PORTAL UI & SAHİBİNDEN STYLE (CSS) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@300;400;600;800&display=swap');
     
-    /* Global Saray Teması */
+    /* Global Stil */
     .stApp {{
-        background: linear-gradient(rgba(10, 0, 0, 0.92), rgba(20, 0, 0, 0.98)), url("{current_theme['bg']}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
+        background-color: #050505;
         color: #ffffff;
         font-family: 'Montserrat', sans-serif;
-        transition: all 1s ease;
     }}
 
-    /* Header & Logo */
-    .hero-section {{
-        text-align: center;
+    /* Hero & Login Section (Sea View Background) */
+    .hero-login {{
+        background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.8)), url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920");
+        background-size: cover;
+        background-position: center;
+        height: 450px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-bottom: 3px solid #ffcc00;
         margin-top: -110px;
-        padding: 50px 0;
-        border-bottom: 2px solid {current_theme['accent']};
-        background: rgba(0,0,0,0.3);
-        backdrop-filter: blur(5px);
+        text-align: center;
     }}
-    .hero-section h1 {{
+
+    .login-card {{
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(15px);
+        padding: 30px;
+        border-radius: 25px;
+        border: 1px solid rgba(255, 204, 0, 0.3);
+        width: 350px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }}
+
+    /* Başlık */
+    .portal-title {{
         font-family: 'Cinzel', serif;
-        font-size: 3.5rem;
-        color: {current_theme['accent']};
-        letter-spacing: 18px;
-        text-shadow: 0 0 30px {current_theme['accent']}66;
-        margin-bottom: 0;
+        font-size: 3rem;
+        color: #ffcc00;
+        letter-spacing: 15px;
+        margin-bottom: 10px;
+        text-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
     }}
 
-    /* Arama Çubuğu */
-    .stTextInput>div>div>input {{
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 2px solid {current_theme['accent']} !important;
-        border-radius: 20px !important;
-        color: white !important;
-        padding: 20px 30px !important;
-        font-size: 1.2rem !important;
-        transition: 0.3s;
-    }}
-    .stTextInput>div>div>input:focus {{
-        box-shadow: 0 0 25px {current_theme['accent']}44 !important;
-    }}
-
-    /* Bento Grid Kartları */
-    .bento-container {{
+    /* Kategori Kartları (Sahibinden Style) */
+    .category-grid {{
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 25px;
-        margin-top: 30px;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 20px;
+        padding: 40px 0;
     }}
-    .bento-shop-card {{
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 30px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        overflow: hidden;
-        transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    .category-card {{
+        background: #111;
+        border-radius: 20px;
+        padding: 25px;
+        text-align: center;
+        border: 1px solid #222;
+        transition: 0.3s;
         cursor: pointer;
     }}
-    .bento-shop-card:hover {{
-        border: 1px solid {current_theme['accent']};
-        transform: translateY(-12px);
-        background: rgba(255, 255, 255, 0.08);
-    }}
-    .shop-img-header {{
-        width: 100%;
-        height: 220px;
-        object-fit: cover;
-        border-bottom: 2px solid {current_theme['accent']};
-        filter: brightness(0.8);
-        transition: 0.5s;
-    }}
-    .bento-shop-card:hover .shop-img-header {{
-        filter: brightness(1.1);
-        transform: scale(1.05);
+
+    .category-card:hover {{
+        border: 1px solid #ffcc00;
+        background: #1a1a1a;
+        transform: translateY(-5px);
     }}
 
-    /* Puan ve Badge'ler */
-    .score-badge {{
-        background: {current_theme['accent']};
-        color: #000;
-        padding: 5px 15px;
-        border-radius: 50px;
-        font-weight: 900;
-        font-size: 0.85rem;
-    }}
-    .sale-tag {{
-        background: #00ff00;
-        color: #000;
-        padding: 4px 12px;
-        border-radius: 10px;
-        font-weight: 800;
-        font-size: 0.75rem;
-        animation: pulse 2s infinite;
-    }}
-    @keyframes pulse {{
-        0% {{ opacity: 1; }} 50% {{ opacity: 0.6; }} 100% {{ opacity: 1; }}
+    .category-icon {{
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        display: block;
     }}
 
-    /* Altın Varaklı Butonlar */
+    /* Dükkan Kartları */
+    .shop-portal-card {{
+        background: #111;
+        border-radius: 20px;
+        border-left: 5px solid #ffcc00;
+        padding: 20px;
+        margin-bottom: 15px;
+        transition: 0.3s;
+    }}
+
+    .shop-portal-card:hover {{
+        background: #181818;
+        padding-left: 30px;
+    }}
+
+    /* Butonlar */
     .stButton>button {{
-        background: linear-gradient(135deg, {current_theme['accent']} 0%, #b38b00 100%) !important;
-        color: #000 !important;
-        border: none !important;
-        border-radius: 15px !important;
+        background: #ffcc00 !important;
+        color: black !important;
+        border-radius: 12px !important;
         font-weight: 800 !important;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        transition: 0.4s;
-    }}
-    .stButton>button:hover {{
-        transform: scale(1.05);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        width: 100%;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- GÜVENLİK ---
+# --- HERO & LOGIN SECTION ---
 if not st.session_state.is_site_unlocked:
-    _, lock_col, _ = st.columns([1, 1.5, 1])
-    with lock_col:
-        st.markdown("<br><br><br><br><h2 style='text-align:center; color:#ffcc00;'>🏛️ ELİTE GİRİŞ</h2>", unsafe_allow_html=True)
-        key_input = st.text_input("Giriş Anahtarı", type="password")
-        if st.button("SARAYIN KAPILARINI AÇ"):
+    st.markdown(f"""
+        <div class="hero-login">
+            <h1 class="portal-title">DÖRTYOL ÇARŞI</h1>
+            <p style="letter-spacing:3px; color:#ddd; margin-bottom:20px;">2026 ELİTE ESNAF PORTALI</p>
+            <div class="login-card">
+                <p style="font-size:0.8rem; color:#aaa; margin-bottom:15px;">Lütfen giriş anahtarını yazın</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    _, col_login, _ = st.columns([2, 1, 2])
+    with col_login:
+        key_input = st.text_input("", type="password", placeholder="Anahtar Kodu...")
+        if st.button("PORTALA GİRİŞ YAP"):
             if key_input == SITE_GIRIS_SIFRESI:
                 st.session_state.is_site_unlocked = True
                 st.rerun()
-            else: st.error("Erişim Engellendi.")
+            else:
+                st.error("Anahtar hatalı.")
     st.stop()
 
-# --- MAIN UI ---
-st.markdown('<div class="hero-section"><h1>DÖRTYOL ÇARŞI</h1></div>', unsafe_allow_html=True)
+# --- ANA PORTAL İÇERİĞİ ---
 
-# ARAMA (TEPEDE)
+st.markdown("""
+    <div style="text-align:center; padding: 40px 0; border-bottom: 1px solid #222;">
+        <h1 style="font-family:'Cinzel', serif; color:#ffcc00; letter-spacing:10px;">DÖRTYOL PORTAL</h1>
+    </div>
+""", unsafe_allow_html=True)
+
+# ARAMA ÇUBUĞU
 _, search_col, _ = st.columns([1, 4, 1])
 with search_col:
-    search_q = st.text_input("", placeholder="🔍 Aradığınız her neyse, burada mutlaka vardır...", key="marketing_search")
+    search_q = st.text_input("", placeholder="🔍 Dükkan, hizmet veya ürün ara...", key="portal_search")
 
 # SEKMELER
-tabs = st.tabs(["💎 KEŞFET", "📜 KURUMSAL KAYIT", "🔐 ESNAF PANELİ", "🔑 YÖNETİM"])
+tabs = st.tabs(["🏛️ ÇARŞIYI GEZ", "📝 KURUMSAL KAYIT", "🔐 ESNAF PANELİ", "🔑 ADMİN"])
 
-# KATEGORİ LİSTESİ
+# KATEGORİLER (YENİ SİSTEM)
 kategoriler = [
-    {"ad": "Tümü", "img": "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=800"},
-    {"ad": "Tatlıcı", "img": "https://images.unsplash.com/photo-1571214050215-08e92a8397a7?q=80&w=800"},
-    {"ad": "Kebapçı", "img": "https://images.unsplash.com/photo-1544148103-0773bf10d330?q=80&w=800"},
-    {"ad": "Kuyumcu", "img": "https://images.unsplash.com/photo-1588444839138-0422329d145f?q=80&w=800"},
-    {"ad": "Eczane", "img": "https://images.unsplash.com/photo-1583947215259-38e31be8751f?q=80&w=800"},
-    {"ad": "Otomotiv", "img": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=800"},
-    {"ad": "Hırdavat", "img": "https://images.unsplash.com/photo-1530124560676-41bc1275d428?q=80&w=800"},
-    {"ad": "Diğer", "img": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800"}
+    {"ad": "Tümü", "ikon": "🌐", "renk": "#ffcc00"},
+    {"ad": "Tatlıcı", "ikon": "🍯", "renk": "#ffa500"},
+    {"ad": "Kebapçı", "ikon": "🔥", "renk": "#ff4500"},
+    {"ad": "Sağlık", "ikon": "🏥", "renk": "#00ffcc"}, # Eczane / Klinik
+    {"ad": "Ulaşım", "ikon": "🚗", "renk": "#ffffff"}, # Otomotiv / Transfer
+    {"ad": "Hizmet", "ikon": "🛠️", "renk": "#aaaaaa"}, # Hırdavat / Tamir
+    {"ad": "Yatırım", "ikon": "💎", "renk": "#d4af37"}, # Emlak / Kuyumcu
+    {"ad": "Giyim", "ikon": "👕", "renk": "#ff66cc"}
 ]
 
 # --- 1. KEŞFET SEKMESİ ---
 with tabs[0]:
-    # BENTO GRID KATEGORİLER
-    st.markdown(f"### 🏷️ Kategoriye Göre Gezin ({st.session_state.selected_cat})")
-    cat_cols = st.columns(len(kategoriler))
-    for i, c in enumerate(kategoriler):
-        with cat_cols[i]:
-            border_style = f"3px solid {current_theme['accent']}" if st.session_state.selected_cat == c['ad'] else "1px solid #444"
+    # KATEGORİ GRID
+    st.markdown("### 🏷️ Sektör Seçin")
+    cols = st.columns(len(kategoriler))
+    for i, cat in enumerate(kategoriler):
+        with cols[i]:
+            active = st.session_state.selected_cat == cat['ad']
             st.markdown(f"""
-                <div style="text-align:center; cursor:pointer;">
-                    <img src="{c['img']}" style="width:100%; height:120px; object-fit:cover; border-radius:20px; border:{border_style};">
-                    <p style="font-size:0.7rem; font-weight:800; margin-top:8px; color:{'white' if st.session_state.selected_cat == c['ad'] else '#888'};">
-                        {c['ad'].upper()}
-                    </p>
+                <div style="text-align:center; padding:15px; border-radius:15px; background:{'#222' if active else '#111'}; border: 1px solid {'#ffcc00' if active else '#222'};">
+                    <span style="font-size:2rem;">{cat['ikon']}</span>
+                    <p style="font-size:0.7rem; font-weight:700; color:{cat['renk']};">{cat['ad'].upper()}</p>
                 </div>
             """, unsafe_allow_html=True)
-            if st.button("Seç", key=f"c_{c['ad']}", help=c['ad']):
-                st.session_state.selected_cat = c['ad']
+            if st.button("Seç", key=f"btn_{cat['ad']}"):
+                st.session_state.selected_cat = cat['ad']
                 st.session_state.selected_id = None
                 st.rerun()
 
     st.divider()
 
-    # DÜKKAN LİSTESİ
+    # DÜKKAN LİSTELEME
     if st.session_state.selected_id is None:
         all_data = verileri_yukle()
         filtered = [d for d in all_data if (search_q.lower() in d['ad'].lower() or search_q.lower() in d['urun'].lower()) and (st.session_state.selected_cat == "Tümü" or d['sektor'] == st.session_state.selected_cat)]
         
         if not filtered:
-            st.info("Henüz bu alanda bir kayıt yok. Kurumsal kayıt ile ilk dükkanı siz ekleyin!")
+            st.info("Bu sektörde henüz kayıtlı dükkan bulunmuyor.")
         
-        # 3'lü Bento Grid
-        for i in range(0, len(filtered), 3):
-            cols = st.columns(3)
-            for j in range(3):
-                if i + j < len(filtered):
-                    d = filtered[i + j]
-                    with cols[j]:
-                        img_url = THEMES.get(d['sektor'], THEMES["Tümü"])["bg"]
-                        st.markdown(f"""
-                        <div class="bento-shop-card">
-                            <img src="{img_url}" class="shop-img-header">
-                            <div style="padding:20px; text-align:center;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                    <span class="score-badge">⭐ {d.get('puan', 0)} / 10</span>
-                                    {f'<span class="sale-tag">🔥 {d["indirim"]}</span>' if d.get('indirim') else ""}
-                                </div>
-                                <h3 style="color:{current_theme['accent']}; margin:0; font-family:'Cinzel', serif;">{d['ad']}</h3>
-                                <p style="font-size:0.9rem; color:#ccc; margin:10px 0;">{d['urun']}</p>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        if st.button(f"🏢 MAĞAZAYI AÇ: {d['ad']}", key=f"sh_{d['id']}"):
-                            st.session_state.selected_id = d
-                            if db and col_ref: col_ref.document(d['id']).update({"tıklanma": firestore.Increment(1)})
-                            st.rerun()
+        for d in filtered:
+            st.markdown(f"""
+            <div class="shop-portal-card">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="color:#ffcc00; font-weight:800; font-size:0.7rem;">{d['sektor'].upper()}</span>
+                    <span style="color:#ffcc00;">⭐ {d.get('puan', 0)}</span>
+                </div>
+                <h3 style="margin:5px 0;">{d['ad']}</h3>
+                <p style="color:#888; font-size:0.9rem;">{d['urun']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"Detayları Gör: {d['ad']}", key=f"sh_{d['id']}"):
+                st.session_state.selected_id = d
+                if db and col_ref: col_ref.document(d['id']).update({"tıklanma": firestore.Increment(1)})
+                st.rerun()
     else:
         # DETAY SAYFASI
         d = st.session_state.selected_id
-        if st.button("⬅️ ÇARŞI MEYDANINA GERİ DÖN"):
+        if st.button("⬅️ PORTALA GERİ DÖN"):
             st.session_state.selected_id = None
             st.rerun()
         
         st.markdown(f"""
-        <div style="background:rgba(0,0,0,0.85); padding:60px; border-radius:50px; border:2px solid {current_theme['accent']}; text-align:center;">
-            <h1 style="color:{current_theme['accent']}; font-family:'Cinzel', serif; font-size:4rem; margin:0;">{d['ad']}</h1>
-            <p style="font-size:1.8rem; font-weight:700; color:#ddd;">{d['urun']}</p>
-            <hr style="border-color:{current_theme['accent']}; width:40%; margin:40px auto;">
-            <p style="font-size:1.4rem; font-style:italic; line-height:1.8; color:#bbb; padding:0 50px;">"{d['icerik']}"</p>
-            <div style="display:flex; justify-content:center; gap:40px; margin:40px 0;">
-                <div style="background:rgba(255,255,255,0.05); padding:20px 40px; border-radius:20px; border:1px solid {current_theme['accent']};">
-                    <h5 style="color:{current_theme['accent']}; margin:0;">ELITE SKOR</h5>
-                    <p style="font-size:2rem; margin:0;">⭐ {d.get('puan', 0)}</p>
-                </div>
-                <div style="background:rgba(255,255,255,0.05); padding:20px 40px; border-radius:20px; border:1px solid {current_theme['accent']};">
-                    <h5 style="color:{current_theme['accent']}; margin:0;">ZİYARET</h5>
-                    <p style="font-size:2rem; margin:0;">👁️ {d.get('tıklanma', 0)}</p>
-                </div>
+        <div style="background:#111; padding:50px; border-radius:30px; border:1px solid #ffcc00; text-align:center;">
+            <h1 style="color:#ffcc00; font-family:'Cinzel', serif;">{d['ad']}</h1>
+            <p style="font-size:1.5rem; font-weight:700;">{d['urun']}</p>
+            <hr style="border-color:#222;">
+            <p style="font-style:italic; line-height:1.8; color:#aaa;">"{d['icerik']}"</p>
+            <div style="display:flex; justify-content:center; gap:30px; margin:30px 0;">
+                <div style="background:#000; padding:15px; border-radius:15px; border:1px solid #333;">Skor: ⭐ {d.get('puan', 0)}</div>
+                <div style="background:#000; padding:15px; border-radius:15px; border:1px solid #333;">İlgi: 👁️ {d.get('tıklanma', 0)}</div>
             </div>
             <a href="https://wa.me/{d['tel'].replace(' ','')}" target="_blank">
-                <button style="width:100%; max-width:500px; background:#25D366; color:white; border:none; padding:25px; border-radius:20px; font-weight:bold; font-size:1.5rem; cursor:pointer;">
-                    🟢 WHATSAPP İLE SİPARİŞ VER
+                <button style="width:100%; max-width:400px; background:#25D366; color:white; border:none; padding:15px; border-radius:15px; font-weight:bold; cursor:pointer;">
+                    🟢 WHATSAPP İLE İLETİŞİME GEÇ
                 </button>
             </a>
         </div>
         """, unsafe_allow_html=True)
 
-# --- 2. KURUMSAL KAYIT ---
+# --- Diğer Sekmeler (Aynı Mantık) ---
 with tabs[1]:
-    st.markdown(f"<h2 style='text-align:center; color:{current_theme['accent']};'>🏛️ KURUMSAL ESNAF BAŞVURUSU</h2>", unsafe_allow_html=True)
-    with st.form("elite_register_v13"):
+    st.markdown("<h3 style='text-align:center; color:#ffcc00;'>🏛️ KURUMSAL KAYIT</h3>", unsafe_allow_html=True)
+    with st.form("portal_reg"):
         c1, c2 = st.columns(2)
         with c1:
             n_ad = st.text_input("İşletme Adı*")
-            n_tel = st.text_input("Resmi WhatsApp (05xx...)")
-            n_map = st.text_input("Harita Konum Linki*")
+            n_tel = st.text_input("İletişim*")
         with c2:
-            n_sek = st.selectbox("Sektör", [k["ad"] for k in kategoriler if k["ad"] != "Tümü"])
-            n_urn = st.text_input("İmza Ürün / Hizmet")
-            n_pwd = st.text_input("Panel Şifreniz*", type="password")
-        
-        n_tanitim = st.text_area("İşletme Hikayesi (Pazarlama için çok kritiktir)")
-        onay = st.checkbox("Elite Hizmet Sözleşmesini ve kurumsal şartları onaylıyorum.")
-        
-        if st.form_submit_button("📜 SİSTEME DİJİTAL KAYIT OL"):
-            if onay and n_ad and n_pwd:
-                data = {
-                    "ad": n_ad, "tel": n_tel, "sektor": n_sek, "urun": n_urn, 
-                    "icerik": n_tanitim, "tarih": datetime.now().strftime("%d/%m/%Y"),
-                    "tıklanma": 0, "puan": 0, "sifre": n_pwd, "map_url": n_map, "indirim": ""
-                }
+            n_sek = st.selectbox("Sektör", [k['ad'] for k in kategoriler if k['ad'] != "Tümü"])
+            n_pwd = st.text_input("Panel Şifresi*", type="password")
+        n_urn = st.text_input("İmza Hizmet/Ürün")
+        n_tanitim = st.text_area("Tanıtım Metni")
+        if st.form_submit_button("SİSTEME KAYDET"):
+            if n_ad and n_pwd:
+                data = {"ad": n_ad, "tel": n_tel, "sektor": n_sek, "urun": n_urn, "icerik": n_tanitim, "sifre": n_pwd, "puan": 0, "tıklanma": 0}
                 col_ref.add(data)
-                st.success("Tebrikler! Dörtyol'un dijital geleceğine kurumsal adımınızı attınız.")
-                st.balloons()
-                time.sleep(2)
-                st.rerun()
+                st.success("Kayıt başarılı!")
+                time.sleep(1); st.rerun()
 
-# --- 3. ESNAF PANELİ ---
 with tabs[2]:
     if st.session_state.owner_shop_id is None:
-        st.markdown("<h3 style='text-align:center;'>🔐 ESNAF DİJİTAL YÖNETİM</h3>", unsafe_allow_html=True)
-        login_ad = st.text_input("Dükkan Adınız")
-        login_pwd = st.text_input("Şifreniz", type="password")
-        if st.button("DASHBOARD'A GİR"):
-            all_shops = verileri_yukle()
-            match = next((s for s in all_shops if s['ad'] == login_ad and s.get('sifre') == login_pwd), None)
-            if match:
-                st.session_state.owner_shop_id = match
-                st.rerun()
-            else: st.error("Hatalı Giriş!")
+        st.markdown("<h3 style='text-align:center;'>🔐 ESNAF GİRİŞİ</h3>", unsafe_allow_html=True)
+        l_ad = st.text_input("Dükkan Adı")
+        l_pwd = st.text_input("Şifre", type="password")
+        if st.button("PANELE GİR"):
+            all_s = verileri_yukle()
+            match = next((s for s in all_s if s['ad'] == l_ad and s.get('sifre') == l_pwd), None)
+            if match: st.session_state.owner_shop_id = match; st.rerun()
     else:
         d = st.session_state.owner_shop_id
-        st.subheader(f"📊 {d['ad']} - Yönetim Paneli")
-        st.write(f"Elite Skoru: ⭐ {d.get('puan', 0)} | Popülerlik: 👁️ {d.get('tıklanma', 0)}")
-        st.divider()
-        u_ind = st.text_input("🔥 Flaş İndirim (Örn: Bugün %20 indirim!)", value=d.get('indirim', ''))
-        u_urn = st.text_input("Meşhur Ürün", value=d['urun'])
-        u_icr = st.text_area("Tanıtım", value=d['icerik'])
-        if st.button("GÜNCELLEMELERİ KAYDET"):
-            if db and col_ref:
-                col_ref.document(d['id']).update({"indirim": u_ind, "urun": u_urn, "icerik": u_icr})
-                st.success("Bilgiler güncellendi!")
-                time.sleep(1)
-                st.rerun()
-        if st.button("🚪 PANELİ KAPAT"):
-            st.session_state.owner_shop_id = None
-            st.rerun()
+        st.subheader(f"📊 {d['ad']} Kontrol Paneli")
+        u_urn = st.text_input("Ürün Güncelle", value=d['urun'])
+        u_icr = st.text_area("Tanıtım Güncelle", value=d['icerik'])
+        if st.button("GÜNCELLE"):
+            col_ref.document(d['id']).update({"urun": u_urn, "icerik": u_icr})
+            st.success("Güncellendi!"); time.sleep(1); st.rerun()
+        if st.button("ÇIKIŞ"): st.session_state.owner_shop_id = None; st.rerun()
 
-# --- 4. ADMİN ---
 with tabs[3]:
-    pwd = st.text_input("Sistem Anahtarı", type="password")
+    pwd = st.text_input("Admin Şifre", type="password")
     if pwd == ADMIN_SIFRE:
-        st.success("Admin Paneli Aktif.")
-        all_data = verileri_yukle()
-        for item in all_data:
-            with st.expander(f"⚙️ {item['ad']}"):
-                p_val = st.slider("Puan Ver (0-10)", 0, 10, int(item.get('puan', 0)), key=f"p_{item['id']}")
-                if st.button(f"Onayla: {item['ad']}", key=f"ps_{item['id']}"):
-                    col_ref.document(item['id']).update({"puan": p_val})
-                    st.rerun()
-                if st.button(f"SİL: {item['ad']}", key=f"del_{item['id']}"):
-                    col_ref.document(item['id']).delete()
-                    st.rerun()
+        all_d = verileri_yukle()
+        for i in all_d:
+            with st.expander(i['ad']):
+                if st.button(f"SİL: {i['ad']}", key=f"del_{i['id']}"):
+                    col_ref.document(i['id']).delete(); st.rerun()
 
 # FOOTER
-st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.2; font-size:0.7rem;'>© {GUNCEL_YIL} Albayrax Premium Architecture | v13.0 Marketing Edition</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.3; font-size:0.7rem;'>© {GUNCEL_YIL} Albayrax Premium Portal | Dörtyol / Hatay</div>", unsafe_allow_html=True)
