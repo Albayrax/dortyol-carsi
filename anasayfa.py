@@ -4,11 +4,10 @@ from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, firestore
 import time
-import random
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Dörtyol Çarşı 2026",
+    page_title="Dörtyol Çarşı 2026 Elite",
     page_icon="🍊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -54,116 +53,117 @@ def verileri_yukle():
         try:
             docs = col_ref.stream()
             return [dict(doc.to_dict(), id=doc.id) for doc in docs]
-        except:
-            return []
+        except: return []
     return []
 
-# --- TASARIM & E-TICARET UI (CSS) ---
+# --- 2026 ELITE UI & ANIMATIONS (CSS) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@300;400;600;800&display=swap');
     
+    /* Ana Arka Plan: Hareketli Mesh Gradient */
     .stApp {{
-        background: linear-gradient(180deg, #0a0a0a 0%, #1c0000 100%);
+        background: linear-gradient(135deg, #0a0a0a 0%, #200000 25%, #000000 50%, #1a0000 75%, #0a0a0a 100%);
+        background-size: 400% 400%;
+        animation: meshGradient 20s ease infinite;
         color: #ffffff;
         font-family: 'Montserrat', sans-serif;
     }}
 
-    /* Üst Başlık ve Navigasyon */
-    .header-box {{
-        text-align: center;
-        margin-top: -95px;
-        padding-bottom: 5px;
-    }}
-    .header-box h1 {{
-        font-family: 'Cinzel', serif;
-        font-size: 2rem;
-        color: #ffcc00;
-        margin: 0;
-        letter-spacing: 8px;
-        text-shadow: 0 0 20px rgba(255, 204, 0, 0.4);
+    @keyframes meshGradient {{
+        0% {{ background-position: 0% 50%; }}
+        50% {{ background-position: 100% 50%; }}
+        100% {{ background-position: 0% 50%; }}
     }}
 
-    /* Tabs (Sekmeler) Tasarımı */
+    /* Header & Nav */
+    .top-nav {{
+        text-align: center;
+        margin-top: -90px;
+        padding-bottom: 10px;
+    }}
+    .top-nav h1 {{
+        font-family: 'Cinzel', serif;
+        font-size: 2.2rem;
+        color: #ffcc00;
+        letter-spacing: 10px;
+        text-shadow: 0 0 30px rgba(255, 204, 0, 0.3);
+    }}
+
+    /* Sekme Çizgisi */
     .stTabs [data-baseweb="tab-list"] {{
         justify-content: center;
-        border-bottom: 2px solid rgba(255, 204, 0, 0.3);
-        margin-bottom: 20px;
-    }}
-    .stTabs [data-baseweb="tab"] {{
-        font-weight: 800;
-        color: #888;
-        padding: 10px 30px;
-    }}
-    .stTabs [aria-selected="true"] {{
-        color: #ffcc00 !important;
+        border-bottom: 1px solid rgba(255, 204, 0, 0.2);
     }}
 
-    /* Instagram/Trendyol Stili Kategori Barı */
-    .story-container {{
-        display: flex;
-        overflow-x: auto;
-        gap: 15px;
-        padding: 10px 0;
-        scrollbar-width: none;
-    }}
-    .story-item {{
-        flex: 0 0 auto;
-        text-align: center;
-        width: 110px;
-        cursor: pointer;
-    }}
-    .story-img {{
-        width: 100px;
-        height: 100px;
-        border-radius: 20px;
-        object-fit: cover;
-        border: 3px solid rgba(255, 204, 0, 0.2);
-        transition: 0.3s;
-    }}
-    .story-img:hover {{
-        border: 3px solid #ffcc00;
-        transform: scale(1.05);
-    }}
-    .story-text {{
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-top: 8px;
-        color: #ddd;
-    }}
-
-    /* Günün Fırsatı Banner */
-    .highlight-banner {{
-        background: linear-gradient(90deg, #b30000 0%, #ffcc00 100%);
-        padding: 20px;
-        border-radius: 25px;
-        margin: 20px 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        color: black;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    }}
-
-    /* Premium Kartlar */
-    .dukkan-card {{
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border-radius: 25px;
-        padding: 15px;
+    /* Büyük Kare Kategori Kartları */
+    .bento-cat-card {{
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 24px;
+        overflow: hidden;
         border: 1px solid rgba(255, 204, 0, 0.1);
-        transition: 0.4s;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
     }}
-    .dukkan-card:hover {{
-        background: rgba(255, 255, 255, 0.08);
+    .bento-cat-card:hover {{
         border: 1px solid #ffcc00;
-        transform: translateY(-5px);
+        transform: scale(1.02);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }}
+    .bento-img {{
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        opacity: 0.7;
+        transition: 0.5s;
+    }}
+    .bento-cat-card:hover .bento-img {{
+        opacity: 1;
+        transform: scale(1.1);
+    }}
+    .bento-title {{
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+        padding: 15px;
+        text-align: center;
+        font-weight: 800;
+        font-size: 0.8rem;
+        color: #ffcc00;
+    }}
+
+    /* Büyük Dükkan Kartları (Featured) */
+    .featured-shop {{
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(15px);
+        border-radius: 30px;
+        padding: 0;
+        margin-bottom: 25px;
+        border: 1px solid rgba(255, 204, 0, 0.15);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }}
+    .shop-img-large {{
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+        border-bottom: 2px solid #ffcc00;
+    }}
+    .shop-content {{
+        padding: 25px;
     }}
 
     /* Butonlar */
     .stButton>button {{
-        border-radius: 12px !important;
+        border-radius: 15px !important;
         font-weight: 800 !important;
+        background: linear-gradient(90deg, #ffcc00 0%, #ffaa00 100%) !important;
+        color: #000 !important;
+        border: none !important;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -173,198 +173,182 @@ if not st.session_state.is_site_unlocked:
     _, lock_col, _ = st.columns([1, 1.5, 1])
     with lock_col:
         st.markdown("<br><br><br><br><h2 style='text-align:center; color:#ffcc00;'>🔒 PRESTİJ ERİŞİMİ</h2>", unsafe_allow_html=True)
-        st.write("<p style='text-align:center;'>Geleceğin Dörtyol'u inşa ediliyor. Giriş anahtarını kullanın.</p>", unsafe_allow_html=True)
         key_input = st.text_input("Giriş Anahtarı", type="password")
-        if st.button("SİSTEME GİR"):
+        if st.button("SİSTEMİ AÇ"):
             if key_input == SITE_GIRIS_SIFRESI:
                 st.session_state.is_site_unlocked = True
                 st.rerun()
-            else:
-                st.error("Hatalı anahtar.")
+            else: st.error("Hatalı Anahtar")
     st.stop()
 
 # --- ANA İÇERİK ---
 
-st.markdown('<div class="header-box"><h1>DÖRTYOL ÇARŞI</h1></div>', unsafe_allow_html=True)
+st.markdown('<div class="top-nav"><h1>DÖRTYOL ÇARŞI</h1></div>', unsafe_allow_html=True)
 
-# SEKME YERLEŞİMİ (NAVİGASYON)
-tabs = st.tabs(["🏛️ ÇARŞIYI GEZ", "📝 KURUMSAL KAYIT", "🔑 YÖNETİM"])
+tabs = st.tabs(["🏛️ ÇARŞIYI KEŞFET", "📝 KURUMSAL KAYIT", "🔑 YÖNETİM"])
 
-# KATEGORİ LİSTESİ (PREMIUM KARE GÖRSELLER)
 kategoriler = [
-    {"ad": "Tümü", "img": "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=300"},
-    {"ad": "Tatlıcı", "img": "https://images.unsplash.com/photo-1519676867240-f03562e64548?q=80&w=300"},
-    {"ad": "Kebapçı", "img": "https://images.unsplash.com/photo-1544148103-0773bf10d330?q=80&w=300"},
-    {"ad": "Kuyumcu", "img": "https://images.unsplash.com/photo-1588444839138-0422329d145f?q=80&w=300"},
-    {"ad": "Giyim", "img": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=300"},
-    {"ad": "Teknoloji", "img": "https://images.unsplash.com/photo-1550009158-9ebf69173e03?q=80&w=300"},
-    {"ad": "Kasap", "img": "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?q=80&w=300"},
-    {"ad": "Manav", "img": "https://images.unsplash.com/photo-1610348725531-843dff563e2c?q=80&w=300"},
-    {"ad": "Eczane", "img": "https://images.unsplash.com/photo-1586015555751-63bb77f4322a?q=80&w=300"},
-    {"ad": "Çiçekçi", "img": "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=300"},
-    {"ad": "Mobilya", "img": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=300"},
-    {"ad": "Hırdavat", "img": "https://images.unsplash.com/photo-1530124560676-41bc1275d428?q=80&w=300"},
-    {"ad": "Züccaciye", "img": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=300"},
-    {"ad": "Emlak", "img": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300"},
-    {"ad": "Otomotiv", "img": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=300"},
-    {"ad": "Diğer", "img": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=300"}
+    {"ad": "Tümü", "img": "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=400"},
+    {"ad": "Tatlıcı", "img": "https://images.unsplash.com/photo-1590483734724-388175d74b6e?q=80&w=400"},
+    {"ad": "Kebapçı", "img": "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=400"},
+    {"ad": "Kuyumcu", "img": "https://images.unsplash.com/photo-1573408302185-9127fe5801f3?q=80&w=400"},
+    {"ad": "Giyim", "img": "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=400"},
+    {"ad": "Teknoloji", "img": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=400"},
+    {"ad": "Eczane", "img": "https://images.unsplash.com/photo-1587854692152-cbe660dbbb88?q=80&w=400"},
+    {"ad": "Manav", "img": "https://images.unsplash.com/photo-1610348725531-843dff563e2c?q=80&w=400"},
+    {"ad": "Kasap", "img": "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?q=80&w=400"},
+    {"ad": "Çiçekçi", "img": "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=400"},
+    {"ad": "Mobilya", "img": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=400"},
+    {"ad": "Hırdavat", "img": "https://images.unsplash.com/photo-1530124560676-41bc1275d428?q=80&w=400"},
+    {"ad": "Züccaciye", "img": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=400"},
+    {"ad": "Emlak", "img": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=400"},
+    {"ad": "Otomotiv", "img": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=400"},
+    {"ad": "Diğer", "img": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=400"}
 ]
 
-# --- 1. SEKME: KEŞFET ---
+# --- 1. KEŞFET SEKMESİ ---
 with tabs[0]:
-    # GÜNÜN ÖNE ÇIKANLARI (STORY/BANNER MANTIĞI)
-    st.markdown("""
-        <div class="highlight-banner">
-            <div>
-                <h3 style="margin:0;">🍊 GÜNÜN ESNAFI: FISTIKZADE GURME</h3>
-                <p style="margin:0; font-size:0.9rem;">Bugün tüm siparişlerde Dörtyol Portakal Suyu ikram!</p>
-            </div>
-            <div style="font-weight:900; font-size:1.5rem;">⚡ FIRSAT</div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # KATEGORİ HİKAYELERİ (KARE VE BÜYÜK)
-    st.write("### 🏷️ Kategoriler")
-    story_cols = st.columns(len(kategoriler))
+    # KATEGORİ IZGARASI (BENTO GRID - 4'LÜ)
+    st.markdown("### 🏷️ Kategorilere Göz Atın")
+    cat_cols = st.columns(4)
     for i, c in enumerate(kategoriler):
-        with story_cols[i]:
+        with cat_cols[i % 4]:
             st.markdown(f"""
-                <div style="text-align:center;">
-                    <img src="{c['img']}" style="width:100px; height:100px; border-radius:20px; border:3px solid {'#ffcc00' if st.session_state.selected_cat == c['ad'] else '#333'};">
-                    <p style="font-size:0.7rem; font-weight:800; margin-top:5px; color:{'#ffcc00' if st.session_state.selected_cat == c['ad'] else '#bbb'};">{c['ad'].upper()}</p>
+                <div class="bento-cat-card">
+                    <img src="{c['img']}" class="bento-img">
+                    <div class="bento-title">{c['ad'].upper()}</div>
                 </div>
             """, unsafe_allow_html=True)
-            if st.button("SEC", key=f"cat_{c['ad']}", help=f"{c['ad']} Seç"):
+            if st.button(f"Süz: {c['ad']}", key=f"cat_{c['ad']}"):
                 st.session_state.selected_cat = c['ad']
                 st.session_state.selected_id = None
                 st.rerun()
 
     st.divider()
 
-    # DÜKKAN LİSTELEME
+    # DÜKKAN LİSTELEME (BÜYÜK GÖRSELLERLE)
     if st.session_state.selected_id is None:
         dukkanlar = verileri_yukle()
-        search = st.text_input("🔍 Aradığınız lezzet veya dükkan...", placeholder="Örn: Kebap, Kuyumcu, Eczane...")
         
+        c_search, c_sort = st.columns([3, 1])
+        with c_search:
+            search = st.text_input("🔍 Neye ihtiyacınız var?", placeholder="Dükkan adı veya ürün yazın...")
+        with c_sort:
+            st.write(f"Süzülen: **{st.session_state.selected_cat}**")
+
         filtered = [d for d in dukkanlar if (search.lower() in d['ad'].lower() or search.lower() in d['urun'].lower()) and (st.session_state.selected_cat == "Tümü" or d['sektor'] == st.session_state.selected_cat)]
         
         if not filtered:
-            st.info(f"{st.session_state.selected_cat} kategorisinde henüz bir kayıt bulunmuyor.")
+            st.info(f"{st.session_state.selected_cat} kategorisinde henüz dükkan yok.")
         
-        # Grid Görünümü (Trendyol Kartları gibi)
-        grid = st.columns(3)
-        for idx, d in enumerate(filtered):
-            with grid[idx % 3]:
-                st.markdown(f"""
-                <div class="dukkan-card">
-                    <small style="color:#ffcc00; font-weight:800;">{d['sektor'].upper()}</small>
-                    <h4 style="margin:5px 0;">{d['ad']}</h4>
-                    <p style="font-size:0.8rem; color:#aaa; min-height:40px;">{d['urun']}</p>
-                    <p style="font-size:0.7rem; color:#666;">📍 Dörtyol Merkez</p>
+        # Featured List (Büyük Kartlar)
+        for d in filtered:
+            st.markdown(f"""
+            <div class="featured-shop">
+                <img src="{'https://images.unsplash.com/photo-1519676867240-f03562e64548?q=80&w=1200' if d['sektor'] == 'Tatlıcı' else 'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200'}" class="shop-img-large">
+                <div class="shop-content">
+                    <span style="color:#ffcc00; font-weight:800; font-size:0.8rem;">{d['sektor'].upper()}</span>
+                    <h2 style="margin:10px 0; color:white;">{d['ad']}</h2>
+                    <p style="color:#bbb; font-size:1.1rem; line-height:1.6;">{d['urun']}</p>
+                    <p style="color:#666; font-size:0.9rem;">📍 Dörtyol / Hatay</p>
                 </div>
-                """, unsafe_allow_html=True)
-                if st.button(f"DETAYLAR: {d['ad']}", key=f"v_{d['id']}"):
-                    st.session_state.selected_id = d
-                    if db and col_ref:
-                        col_ref.document(d['id']).update({"tıklanma": firestore.Increment(1)})
-                    st.rerun()
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"MAĞAZAYI ZİYARET ET: {d['ad']}", key=f"v_{d['id']}"):
+                st.session_state.selected_id = d
+                if db and col_ref:
+                    col_ref.document(d['id']).update({"tıklanma": firestore.Increment(1)})
+                st.rerun()
     else:
-        # DETAY SAYFASI
+        # DETAY SAYFASI (TAM EKRAN PREMIUM)
         d = st.session_state.selected_id
-        if st.button("⬅️ ÇARŞI LİSTESİNE DÖN"):
+        if st.button("⬅️ ÇARŞI MEYDANINA DÖN"):
             st.session_state.selected_id = None
             st.rerun()
         
         st.markdown(f"""
-        <div style="background:rgba(0,0,0,0.6); padding:40px; border-radius:40px; border:1px solid #ffcc00;">
-            <h1 style="color:#ffcc00; text-align:center;">{d['ad']}</h1>
-            <p style="text-align:center; letter-spacing:3px;">2026 KURUMSAL ESNAF AĞI</p>
-            <hr style="border-color:#444;">
-            <div style="display:flex; justify-content:space-around; text-align:center; padding:20px 0;">
-                <div><h5 style="color:#ffcc00;">İMZA ÜRÜN</h5><p>{d['urun']}</p></div>
-                <div><h5 style="color:#ffcc00;">KATEGORİ</h5><p>{d['sektor']}</p></div>
+        <div style="background:rgba(0,0,0,0.7); padding:60px; border-radius:40px; border:2px solid #ffcc00; text-align:center;">
+            <h1 style="color:#ffcc00; font-size:4rem; margin:0;">{d['ad']}</h1>
+            <p style="letter-spacing:5px; color:#888;">2026 ELİTE ESNAF AĞI</p>
+            <hr style="border-color:#333; width:50%; margin:40px auto;">
+            <div style="display:flex; justify-content:center; gap:50px; margin-bottom:40px;">
+                <div><h3 style="color:#ffcc00;">İMZA ÜRÜN</h3><p style="font-size:1.5rem;">{d['urun']}</p></div>
+                <div><h3 style="color:#ffcc00;">KATEGORİ</h3><p style="font-size:1.5rem;">{d['sektor']}</p></div>
             </div>
-            <p style="padding:20px; font-style:italic; text-align:center; border-radius:20px; background:rgba(255,255,255,0.03);">"{d['icerik']}"</p>
+            <p style="font-size:1.3rem; line-height:1.8; max-width:800px; margin:0 auto; color:#ccc;">"{d['icerik']}"</p>
+            <br><br>
             <a href="https://wa.me/{d['tel'].replace(' ','')}" target="_blank">
-                <button style="width:100%; background:#25D366; color:white; border:none; padding:18px; border-radius:15px; font-weight:bold; cursor:pointer; font-size:1.1rem;">
-                    🟢 WHATSAPP İLE SİPARİŞ / BİLGİ AL
+                <button style="width:100%; max-width:500px; background:#25D366; color:white; border:none; padding:25px; border-radius:20px; font-weight:bold; font-size:1.4rem; cursor:pointer;">
+                    🟢 WHATSAPP İLE SİPARİŞ VER
                 </button>
             </a>
         </div>
         """, unsafe_allow_html=True)
 
-# --- 2. SEKME: KAYIT ---
+# --- 2. SEKME: KURUMSAL KAYIT ---
 with tabs[1]:
-    st.markdown("<h3 style='text-align:center; color:#ffcc00;'>🏢 KURUMSAL ESNAF BAŞVURUSU</h3>", unsafe_allow_html=True)
-    with st.form("premium_register_v4"):
+    st.markdown("<h2 style='text-align:center; color:#ffcc00;'>🏢 KURUMSAL ESNAF BAŞVURUSU</h2>", unsafe_allow_html=True)
+    with st.form("elite_register_v5"):
         c1, c2 = st.columns(2)
         with c1:
-            n_ad = st.text_input("İşletme Adı*")
-            n_tel = st.text_input("Resmi WhatsApp No (05xx...)")
+            n_ad = st.text_input("İşletme Resmi Adı*")
+            n_tel = st.text_input("Kurumsal WhatsApp (05xx...)")
         with c2:
-            n_sek = st.selectbox("Sektör / Faaliyet Alanı", [k["ad"] for k in kategoriler if k["ad"] != "Tümü"])
-            n_urn = st.text_input("İmza Ürününüz / Hizmetiniz")
+            n_sek = st.selectbox("Sektör Seçin", [k["ad"] for k in kategoriler if k["ad"] != "Tümü"])
+            n_urn = st.text_input("Öne Çıkan Ürün/Hizmet")
         
-        n_tanitim = st.text_area("İşletme Hikayesi ve Müşterilere Mesajınız")
+        n_tanitim = st.text_area("İşletme Tanıtım Yazısı")
         
         st.markdown("""
-            <div style="background:rgba(255,204,0,0.05); padding:15px; border-radius:15px; border:1px dashed #ffcc00; font-size:0.8rem; color:#ddd;">
-                <b>ESNAF TAAHHÜTNAMESİ:</b> Dörtyol Dijital Çarşı platformuna kayıt olan işletmemiz; sunduğu ürün ve hizmetlerde kaliteyi koruyacağını, müşteri memnuniyetini esas alacağını ve platform kurallarına uyacağını dijital olarak taahhüt eder.
+            <div style="background:rgba(255,204,0,0.05); padding:20px; border-radius:20px; border:1px dashed #ffcc00; color:#ddd; margin-bottom:20px;">
+                <b>ESNAF TAAHHÜTNAMESİ:</b> Dörtyol Dijital Çarşı platformuna kayıt olan işletmemiz; dürüst ticaret, yüksek kalite ve müşteri memnuniyetini kurumsal bir ilke olarak kabul ettiğini beyan eder.
             </div>
         """, unsafe_allow_html=True)
-        onay = st.checkbox("Kurumsal taahhütnameyi okudum ve dijital imzamla onaylıyorum.")
+        onay = st.checkbox("Kurumsal taahhütnameyi okudum ve onaylıyorum.")
         
-        if st.form_submit_button("📜 BAŞVURUYU TAMAMLA VE YAYINLA"):
+        if st.form_submit_button("📜 SİSTEME DAHİL OL"):
             if onay and n_ad and db:
                 data = {
                     "ad": n_ad, "tel": n_tel, "sektor": n_sek, "urun": n_urn, 
                     "icerik": n_tanitim, "tarih": datetime.now().strftime("%d/%m/%Y"),
-                    "tıklanma": 0, "onaylı": True
+                    "tıklanma": 0
                 }
                 col_ref.add(data)
-                st.success("Tebrikler! İşletmeniz Dörtyol'un dijital geleceğine dahil edildi.")
+                st.success("Başvuru onaylandı! Dörtyol'un dijital geleceğine hoş geldiniz.")
                 st.balloons()
                 time.sleep(2)
                 st.rerun()
 
 # --- 3. SEKME: YÖNETİM ---
 with tabs[2]:
-    pwd = st.text_input("Admin Erişim Anahtarı", type="password")
+    pwd = st.text_input("Erişim Anahtarı", type="password")
     if pwd == ADMIN_SIFRE:
         st.session_state.is_admin = True
-        st.success("Hoş Geldin Albayrax. Sistem ve Analiz Paneli Açık.")
+        st.success("Admin Paneli Aktif.")
         
         all_data = verileri_yukle()
-        
-        # ANALİZ METRİKLERİ
-        st.markdown("### 📈 Platform Analitiği")
+        st.markdown("### 📈 Veri ve İlgi Analizi")
         m1, m2, m3 = st.columns(3)
-        with m1:
-            st.metric("Kayıtlı Esnaf", len(all_data))
-        with m2:
-            top_hit = max(all_data, key=lambda x: x.get('tıklanma', 0)) if all_data else {"ad": "-"}
-            st.metric("En Çok İlgi Gören", top_hit['ad'], f"{top_hit.get('tıklanma', 0)} tık")
-        with m3:
-            st.metric("Sistem Durumu", "2026 Aktif")
+        with m1: st.metric("Kayıtlı Esnaf", len(all_data))
+        with m2: 
+            best = max(all_data, key=lambda x: x.get('tıklanma', 0)) if all_data else {"ad": "-"}
+            st.metric("En Popüler Mağaza", best['ad'], f"{best.get('tıklanma',0)} tık")
+        with m3: st.metric("Platform Versiyonu", "5.0 Elite")
 
         st.divider()
-        
-        # SİLME / DÜZENLEME
         for item in all_data:
-            with st.expander(f"⚙️ {item['ad']} (Toplam İlgi: {item.get('tıklanma', 0)})"):
-                st.write(f"Kayıt Tarihi: {item.get('tarih','-')} | İletişim: {item['tel']}")
-                if st.button(f"🗑️ İŞLETMEYİ KALDIR: {item['ad']}", key=f"del_{item['id']}"):
+            with st.expander(f"⚙️ {item['ad']} (İlgi: {item.get('tıklanma',0)})"):
+                if st.button(f"SİSTEMDEN KALDIR: {item['ad']}", key=f"del_{item['id']}"):
                     col_ref.document(item['id']).delete()
-                    st.warning("İşletme sistemden silindi.")
+                    st.warning("Silindi.")
                     st.rerun()
-    elif pwd:
-        st.error("Erişim Reddedildi!")
+    elif pwd: st.error("Erişim Reddedildi")
 
 # FOOTER
 st.markdown(f"""
-    <div style="text-align:center; padding-top:100px; opacity:0.3; font-size:0.6rem; letter-spacing:2px;">
-        © {GUNCEL_YIL} Albayrax Premium Digital Architecture | Dörtyol Hatay<br>
-        v4.0 Visionary Commerce Platform
+    <div style="text-align:center; padding-top:120px; opacity:0.3; font-size:0.7rem; letter-spacing:3px;">
+        © {GUNCEL_YIL} Albayrax Premium Architecture | v5.0 Elite Edition<br>
+        Dörtyol Dijital Ekosistem Projesi
     </div>
-    <div style="height:60px;"></div>
+    <div style="height:80px;"></div>
     """, unsafe_allow_html=True)
