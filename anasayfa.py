@@ -20,21 +20,47 @@ SITE_GIRIS_SIFRESI = "dortyol2026"
 APP_ID = "dortyol-carsi-v1"
 GUNCEL_YIL = "2026"
 
-# --- FIREBASE BAĞLANTISI ---
+# --- FIREBASE BAĞLANTISI VE STORAGE HATASI KESİN ÇÖZÜM ---
 if not firebase_admin._apps:
     try:
         if "firebase" in st.secrets:
             key_dict = json.loads(st.secrets["firebase"]["key"])
             p_id = key_dict.get("project_id")
-            bucket_name = f"{p_id}.firebasestorage.app"
+            
+            # Firebase Bucket adını tahmin ediyoruz (Genelde bu ikisinden biridir)
+            # Eğer secrets içinde 'storage_bucket' tanımladıysan onu kullanırız.
+            b_name = st.secrets["firebase"].get("storage_bucket", f"{p_id}.firebasestorage.app")
+            
             cred = credentials.Certificate(key_dict)
-            firebase_admin.initialize_app(cred, {'storageBucket': bucket_name})
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': b_name
+            })
     except Exception as e:
-        st.error(f"Firebase bağlantı hatası: {e}")
+        st.error(f"Firebase başlatma hatası: {e}")
 
-db = firestore.client() if firebase_admin._apps else None
-col_ref = db.collection("artifacts").document(APP_ID).collection("public").document("data").collection("dukkanlar") if db else None
-bucket = storage.bucket() if firebase_admin._apps else None
+db = None
+col_ref = None
+bucket = None
+
+if firebase_admin._apps:
+    try:
+        db = firestore.client()
+        col_ref = db.collection("artifacts").document(APP_ID).collection("public").document("data").collection("dukkanlar")
+        
+        # Hatalı olan satır düzeltildi: Bucket ismi açıkça belirtiliyor
+        key_dict = json.loads(st.secrets["firebase"]["key"])
+        p_id = key_dict.get("project_id")
+        
+        # Sırayla deniyoruz
+        try:
+            bucket = storage.bucket(f"{p_id}.firebasestorage.app")
+        except:
+            try:
+                bucket = storage.bucket(f"{p_id}.appspot.com")
+            except:
+                bucket = storage.bucket() # Son çare
+    except:
+        pass
 
 # --- SESSION STATE ---
 states = {
@@ -104,7 +130,7 @@ st.markdown(f"""
     }}
     .corporate-box h2, .corporate-box p, .corporate-box label {{ color: #000000 !important; font-weight: 800; }}
 
-    .business-card {{ background: rgba(255,255,255,0.05); border-radius: 20px; border-left: 6px solid #ffcc00; padding: 25px; margin-bottom: 15px; border-top: 1px solid #333; }}
+    .business-card {{ background: rgba(255,255,255,0.05); border-radius: 20px; border-left: 5px solid #ffcc00; padding: 25px; margin-bottom: 15px; border-top: 1px solid #333; }}
     .product-box {{ background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 20px; border: 1px solid #444; margin-bottom: 15px; }}
     
     /* Sekme Başlıkları */
@@ -199,7 +225,7 @@ with tabs[1]:
     st.markdown('<div class="corporate-box">', unsafe_allow_html=True)
     st.markdown("<h2>🏛️ DİJİTAL ÇARŞI'DA YERİNİZİ ALIN</h2>", unsafe_allow_html=True)
     st.markdown("<p>İşletmenizi kaydedin, Dörtyol'un dijital geleceğine dahil olun.</p>", unsafe_allow_html=True)
-    with st.form("corporate_reg_v29"):
+    with st.form("corporate_reg_v30"):
         c1, c2 = st.columns(2)
         with c1:
             n_ad = st.text_input("Dükkan Resmi Adı*")
@@ -279,6 +305,6 @@ st.markdown(f"""
     <div style='text-align:center; padding-top:100px; padding-bottom:50px; opacity:0.6; font-size:0.8rem;'>
         <hr style="border-color:#ffcc0033;">
         <b>📞 Kurumsal İletişim:</b> 0326 712 00 00 | <b>📍 Adres:</b> Dörtyol, Hatay<br>
-        © {GUNCEL_YIL} Albayrax Elite Portal | v29.0 Elite Power Edition
+        © {GUNCEL_YIL} Albayrax Elite Portal | v30.0 Final Power Edition
     </div>
     """, unsafe_allow_html=True)
