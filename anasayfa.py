@@ -8,7 +8,7 @@ import re
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Dörtyol Esnaf Portalı | 2026 Dynamic Edition",
+    page_title="Dörtyol Esnaf Portalı | 2026 Price War",
     page_icon="🍊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -20,7 +20,7 @@ SITE_GIRIS_SIFRESI = "dortyol2026"
 APP_ID = "dortyol-carsi-v1"
 GUNCEL_YIL = "2026"
 
-# --- FIREBASE BAĞLANTISI (GÜVENLİ STORAGE MODU) ---
+# --- FIREBASE BAĞLANTISI ---
 if not firebase_admin._apps:
     try:
         if "firebase" in st.secrets:
@@ -53,93 +53,93 @@ for key, val in states.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
-# --- DÖRTYOL GERÇEK VERİ TABANI (DETAYLI AKARYAKIT) ---
-DORTYOL_DATABASE = [
-    {
-        "ad": "Dörtyol Petrol Ofisi", "sektor": "Ulaşım", "sifre": "petrol2026", "puan": 9.5, "tıklanma": 0,
-        "icerik": "Günün her saati kaliteli yakıt, geniş market alanı ve temiz hizmet.",
-        "tel": "0326 712 00 00", "adres": "E-5 Karayolu Üzeri No:44", "saatler": "24 Saat Açık",
-        "urunler": [
-            {"ad": "V-Max Kurşunsuz 95", "fiyat": 60.50, "detay": "Performans arttırıcı katkılı benzin."},
-            {"#ad": "V-Pro Dizel", "fiyat": 50.20, "detay": "Yeni nesil temiz motorin."},
-            {"ad": "PO Gaz / LPG", "fiyat": 30.15, "detay": "Ekonomik ve güvenli otogaz."}
-        ]
-    },
-    {
-        "ad": "Antik Kral Künefe", "sektor": "Tatlıcı", "sifre": "kral2026", "puan": 9.9, "tıklanma": 0,
-        "icerik": "Dörtyol'un tescilli lezzet durağı.",
-        "tel": "0532 111 22 33", "adres": "Atatürk Caddesi", "saatler": "10:00 - 00:00",
-        "urunler": [
-            {"ad": "Künefe", "fiyat": 180, "detay": "Klasik Hatay peynirli."},
-            {"ad": "Hasır", "fiyat": 240, "detay": "Özel tereyağlı çıtır hasır."}
-        ]
-    }
-]
-
-# --- FONKSİYONLAR ---
+# --- VERİ TABANI YÜKLEME ---
 def verileri_yukle():
     if col_ref:
         try:
             docs = col_ref.stream()
             data = [dict(doc.to_dict(), id=doc.id) for doc in docs]
-            if not data: return DORTYOL_DATABASE
+            # Eğer DB boşsa statik verileri döndür
+            if not data:
+                return [
+                    {"ad": "Dörtyol Petrol Ofisi", "sektor": "Ulaşım", "sifre": "petrol2026", "puan": 9.5, "tıklanma": 0, "icerik": "Kaliteli yakıtın adresi.", "tel": "0326 712 00 00", "urunler": [{"ad": "Kurşunsuz 95", "fiyat": 60.50}]},
+                    {"ad": "Shell Dörtyol", "sektor": "Ulaşım", "sifre": "shell2026", "puan": 9.2, "tıklanma": 0, "icerik": "V-Power Farkı.", "tel": "0326 712 11 11", "urunler": [{"ad": "Kurşunsuz 95", "fiyat": 61.20}]},
+                    {"ad": "Antik Kral Künefe", "sektor": "Tatlıcı", "sifre": "kral2026", "puan": 9.9, "tıklanma": 0, "icerik": "Efsane lezzet.", "tel": "0532 111 22 33", "urunler": [{"ad": "Künefe", "fiyat": 180}]}
+                ]
             return data
-        except: return DORTYOL_DATABASE
-    return DORTYOL_DATABASE
+        except: return []
+    return []
 
 # --- PREMIUM UI ---
 st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@300;400;600;800&family=Playfair+Display:ital,wght@1,600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@300;400;600;800&display=swap');
     .stApp {{
-        background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), 
+        background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.95)), 
                     url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1920");
         background-size: cover; background-attachment: fixed; color: #ffffff; font-family: 'Montserrat', sans-serif;
     }}
-    .main-title {{ font-family: 'Cinzel', serif; color: #ffcc00; font-size: 3rem; text-align: center; margin-top: -100px; letter-spacing: 12px; text-shadow: 0 0 30px rgba(255,204,0,0.5); }}
-    .business-card {{ background: rgba(255,255,255,0.05); border-radius: 20px; border-left: 6px solid #ffcc00; padding: 25px; margin-bottom: 15px; transition: 0.3s; }}
-    .business-card:hover {{ background: rgba(255, 204, 0, 0.05); transform: translateY(-3px); }}
-    .price-box {{ background: #ffcc00; color: #000; padding: 5px 15px; border-radius: 10px; font-weight: 900; font-size: 1.2rem; }}
+    .main-title {{ font-family: 'Cinzel', serif; color: #ffcc00; font-size: 3rem; text-align: center; margin-top: -100px; letter-spacing: 10px; }}
+    .war-box {{ background: linear-gradient(90deg, #ff4b2b, #ff416c); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; border: 2px solid white; }}
+    .business-card {{ background: rgba(255,255,255,0.05); border-radius: 20px; border-left: 6px solid #ffcc00; padding: 25px; margin-bottom: 15px; border-top: 1px solid #333; }}
+    .price-tag {{ background: #ffcc00; color: #000; padding: 5px 15px; border-radius: 10px; font-weight: 900; font-size: 1.2rem; }}
     code {{ display: none !important; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- LOGIN ---
+# --- GİRİŞ ---
 if not st.session_state.is_site_unlocked:
-    st.markdown('<div style="height:100px;"></div>', unsafe_allow_html=True)
-    st.markdown('<h1 class="main-title">DÖRTYOL ÇARŞI</h1>', unsafe_allow_html=True)
+    st.markdown('<div style="height:100px;"></div><h1 class="main-title">DÖRTYOL ÇARŞI</h1>', unsafe_allow_html=True)
     _, col_log, _ = st.columns([2, 1.2, 2])
     with col_log:
         st.markdown('<div style="background:rgba(0,0,0,0.6); padding:30px; border-radius:30px; border:1px solid #ffcc0033; text-align:center;">', unsafe_allow_html=True)
-        st.write("<p style='color:#ffcc00; font-style:italic;'>Sisteme Giriş Yapın</p>", unsafe_allow_html=True)
-        pwd = st.text_input("", type="password", placeholder="Anahtar Kod (dortyol2026)")
-        if st.button("PORTALI AKTİF ET"):
+        pwd = st.text_input("Giriş Anahtarı", type="password", placeholder="dortyol2026")
+        if st.button("SİSTEME GİR"):
             if pwd == SITE_GIRIS_SIFRESI:
                 st.session_state.is_site_unlocked = True
                 st.rerun()
-            else: st.error("Hatalı Kod")
+            else: st.error("Hatalı!")
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- MAIN ---
+# --- ANA SAYFA ---
 st.markdown('<h1 class="main-title">DÖRTYOL PORTAL</h1>', unsafe_allow_html=True)
-tabs = st.tabs(["💎 ÇARŞIYI GEZ", "🏛️ KURUMSAL KAYIT", "🔐 ESNAF PANELİ", "🔑 ADMİN"])
 
-kategoriler = [{"ad": "Tümü", "ikon": "🌐"}, {"ad": "Tatlıcı", "ikon": "🍯"}, {"ad": "Kebapçı", "ikon": "🔥"}, {"ad": "Sağlık", "ikon": "🏥"}, {"ad": "Ulaşım", "ikon": "🚗"}, {"ad": "Hizmet", "ikon": "🛠️"}, {"ad": "Yatırım", "ikon": "💎"}, {"ad": "Teknoloji", "ikon": "💻"}]
+tabs = st.tabs(["🏛️ ÇARŞI MEYDANI", "📝 KURUMSAL KAYIT", "🔐 ESNAF PANELİ", "🔑 ADMİN"])
 
-# --- 1. KEŞFET ---
+all_shops = verileri_yukle()
+
+# --- 1. KEŞFET SEKMESİ ---
 with tabs[0]:
-    cat_cols = st.columns(len(kategoriler))
+    # REKABET VİTRİNİ (PRICE WAR)
+    st.markdown("### 🔥 Dörtyol'un En Ucuzu (Günün Savaşçıları)")
+    fuel_prices = []
+    for s in all_shops:
+        for u in s.get('urunler', []):
+            if "Benzin" in u['ad'] or "95" in u['ad']:
+                fuel_prices.append({"dükkan": s['ad'], "fiyat": u['fiyat']})
+    
+    if fuel_prices:
+        cheapest = min(fuel_prices, key=lambda x: x['fiyat'])
+        st.markdown(f"""
+            <div class="war-box">
+                <h2 style="margin:0;">⛽ EN UCUZ BENZİN ŞU AN BURADA!</h2>
+                <p style="font-size:1.5rem; font-weight:900; margin:10px 0;">{cheapest['dükkan']}: {cheapest['fiyat']} ₺</p>
+                <small>Fiyatlar anlık esnaf güncellemeleridir.</small>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # KATEGORİLER
+    kategoriler = ["Tümü", "Tatlıcı", "Kebapçı", "Sağlık", "Ulaşım", "Hizmet", "Yatırım", "Teknoloji"]
+    cols = st.columns(len(kategoriler))
     for i, cat in enumerate(kategoriler):
-        with cat_cols[i]:
-            if st.button(f"{cat['ikon']} {cat['ad']}", key=f"cat_{cat['ad']}"):
-                st.session_state.selected_cat = cat['ad']
-                st.session_state.selected_shop_id = None
-                st.rerun()
+        if cols[i].button(cat, key=f"cat_{cat}"):
+            st.session_state.selected_cat = cat
+            st.session_state.selected_shop_id = None
+            st.rerun()
 
     st.divider()
-    all_shops = verileri_yukle()
-    
+
     if st.session_state.selected_shop_id is None:
         filtered = [s for s in all_shops if st.session_state.selected_cat == "Tümü" or s.get('sektor') == st.session_state.selected_cat]
         for s in filtered:
@@ -151,101 +151,87 @@ with tabs[0]:
                     </div>
                     <h2 style="color:#ffcc00; font-family:Cinzel; margin:5px 0;">{s.get('ad','')}</h2>
                     <p style="color:#ddd; font-size:0.9rem;">{s.get('icerik','')[:150]}...</p>
-                    <small style="color:#666;">👁️ {s.get('tıklanma', 0)} Görüntülenme</small>
                 </div>
             """, unsafe_allow_html=True)
-            if st.button(f"🏪 {s.get('ad')} Detaylarını Gör", key=f"v_{s.get('id', s.get('ad'))}"):
+            if st.button(f"🏪 Mağazayı İncele: {s.get('ad')}", key=f"v_{s.get('id', s.get('ad'))}"):
                 st.session_state.selected_shop_id = s.get('id', s.get('ad'))
                 if col_ref and 'id' in s: col_ref.document(s['id']).update({"tıklanma": firestore.Increment(1)})
                 st.rerun()
     else:
+        # DETAY SAYFASI
         shop = next((s for s in all_shops if (s.get('id') == st.session_state.selected_shop_id or s.get('ad') == st.session_state.selected_shop_id)), None)
         if st.button("⬅️ LİSTEYE GERİ DÖN"): st.session_state.selected_shop_id = None; st.rerun()
         if shop:
-            st.markdown(f"""
-                <div style="background:rgba(0,0,0,0.8); padding:50px; border-radius:35px; border:2px solid #ffcc00; text-align:center;">
-                    <h1 style="color:#ffcc00; font-family:Cinzel; margin:0;">{shop['ad']}</h1>
-                    <p style="color:#ddd; font-style:italic;">"{shop.get('icerik','')}"</p>
-                    <p style="font-size:0.8rem; color:#888; margin-top:10px;">🕒 {shop.get('saatler','')} | 📍 {shop.get('adres','')}</p>
-                </div>
-                <h3 style="color:#ffcc00; margin-top:40px; font-family:Cinzel; text-align:center;">📋 GÜNCEL FİYAT LİSTESİ</h3>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"<h1 style='color:#ffcc00; text-align:center;'>{shop['ad']}</h1>", unsafe_allow_html=True)
             for item in shop.get('urunler', []):
                 st.markdown(f"""
-                    <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:15px; border:1px solid #444; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <h4 style="margin:0; color:#ffcc00;">{item.get('ad','')}</h4>
-                            <p style="margin:5px 0 0 0; font-size:0.8rem; color:#aaa;">{item.get('detay','')}</p>
-                        </div>
-                        <div class="price-box">{item.get('fiyat', 0)} ₺</div>
+                    <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <h4 style="margin:0;">{item['ad']}</h4>
+                        <div class="price-tag">{item['fiyat']} ₺</div>
                     </div>
                 """, unsafe_allow_html=True)
 
-# --- 3. ESNAF PANELİ ---
+# --- 3. ESNAF PANELİ (GİRİŞ DÜZELTİLDİ) ---
 with tabs[2]:
     if st.session_state.owner_shop_id is None:
-        st.markdown("<h3 style='text-align:center;'>🔐 ESNAF DİJİTAL YÖNETİMİ</h3>", unsafe_allow_html=True)
-        l_ad = st.text_input("Dükkan Adı (Örn: Dörtyol Petrol Ofisi)")
-        l_pwd = st.text_input("Şifre", type="password")
+        st.markdown("### 🔐 Esnaf Yönetim Paneli")
+        l_ad = st.text_input("Dükkan Adınız (Kayıtlı isim)")
+        l_pwd = st.text_input("Panel Şifreniz", type="password")
+        st.info("Test için: Dörtyol Petrol Ofisi / petrol2026")
         if st.button("DASHBOARD'A GİR"):
-            all_s = verileri_yukle()
-            match = next((s for s in all_s if s.get('ad','').lower() == l_ad.lower() and str(s.get('sifre')) == l_pwd), None)
-            if match: st.session_state.owner_shop_id = match.get('id', match.get('ad')); st.rerun()
-            else: st.error("Giriş Hatalı!")
+            # Girişi garantilemek için temizleme yapıyoruz
+            match = next((s for s in all_shops if s.get('ad','').lower().strip() == l_ad.lower().strip() and str(s.get('sifre','')).strip() == l_pwd.strip()), None)
+            if match:
+                st.session_state.owner_shop_id = match.get('id', match.get('ad'))
+                st.rerun()
+            else: st.error("Giriş bilgileri hatalı. Lütfen büyük/küçük harfe dikkat edin.")
     else:
+        # PANEL İÇERİĞİ
         shop_id = st.session_state.owner_shop_id
-        all_s = verileri_yukle()
-        d = next((s for s in all_s if (s.get('id') == shop_id or s.get('ad') == shop_id)), None)
+        d = next((s for s in all_shops if (s.get('id') == shop_id or s.get('ad') == shop_id)), None)
         if d:
-            st.subheader(f"📊 {d['ad']} Kontrol Merkezi")
+            st.subheader(f"📊 {d['ad']} Yönetim Paneli")
             
-            with st.expander("⛽ Fiyatları / Ürünleri Güncelle"):
-                st.write("Mevcut ürünlerinizi buradan yönetin.")
+            with st.expander("💰 Fiyat Savaşı: Ürün ve Fiyat Güncelle"):
+                st.warning("Dikkat: Fiyatı düşürürseniz ana sayfadaki 'En Ucuz' vitrinine çıkabilirsiniz!")
                 current_prods = d.get('urunler', [])
-                new_prods = []
+                updated_prods = []
                 for idx, item in enumerate(current_prods):
                     c1, c2 = st.columns([3, 1])
-                    with c1:
-                        p_name = st.text_input(f"Ürün {idx+1} Adı", value=item.get('ad',''), key=f"pname_{idx}")
-                    with c2:
-                        p_price = st.number_input(f"Fiyat (₺)", value=float(item.get('fiyat',0)), key=f"pprice_{idx}")
-                    new_prods.append({"ad": p_name, "fiyat": p_price, "detay": item.get('detay','')})
+                    p_name = c1.text_input(f"Ürün {idx+1}", value=item.get('ad',''), key=f"edit_name_{idx}")
+                    p_price = c2.number_input(f"Fiyat ₺", value=float(item.get('fiyat',0)), key=f"edit_price_{idx}")
+                    updated_prods.append({"ad": p_name, "fiyat": p_price, "detay": item.get('detay','')})
                 
-                if st.button("TÜM FİYATLARI GÜNCELLE"):
-                    col_ref.document(d['id']).update({"urunler": new_prods})
-                    st.success("Fiyatlar saniyeler içinde tüm Dörtyol'a yansıdı!")
-                    time.sleep(1); st.rerun()
+                if st.button("DEĞİŞİKLİKLERİ YAYINLA"):
+                    if col_ref and 'id' in d:
+                        col_ref.document(d['id']).update({"urunler": updated_prods})
+                        st.success("Fiyatlar güncellendi ve rekabet kızıştı!")
+                        time.sleep(1); st.rerun()
 
-            with st.expander("➕ Yeni Ürün Ekle"):
-                u_ad = st.text_input("Yeni Ürün Adı")
-                u_fiy = st.number_input("Yeni Ürün Fiyatı", min_value=0.0)
-                if st.button("LİSTEYE EKLE"):
-                    current_prods.append({"ad": u_ad, "fiyat": u_fiy, "detay": "Yeni ürün."})
-                    col_ref.document(d['id']).update({"urunler": current_prods})
-                    st.success("Yeni ürün listeye eklendi!"); st.rerun()
+            if st.button("🚪 PANELİ KAPAT"):
+                st.session_state.owner_shop_id = None
+                st.rerun()
 
-            if st.button("🚪 PANELİ KAPAT"): st.session_state.owner_shop_id = None; st.rerun()
-
-# --- DİĞER SEKMELER (ADMİN & KAYIT) ---
+# --- DİĞERLERİ (ADMİN & KAYIT) ---
 with tabs[1]:
-    st.markdown("<h3 style='text-align:center;'>🏛️ KURUMSAL KAYIT</h3>", unsafe_allow_html=True)
-    with st.form("reg_v32"):
-        n_ad = st.text_input("İşletme Adı*")
-        n_sek = st.selectbox("Sektör", [k['ad'] for k in kategoriler if k['ad'] != "Tümü"])
+    st.markdown("<h3 style='text-align:center;'>🏛️ YENİ ESNAF KAYDI</h3>", unsafe_allow_html=True)
+    with st.form("reg_v33"):
+        n_ad = st.text_input("Dükkan Adı*")
+        n_sek = st.selectbox("Sektör", ["Tatlıcı", "Kebapçı", "Sağlık", "Ulaşım", "Hizmet", "Yatırım", "Teknoloji"])
         n_pwd = st.text_input("Yönetim Şifresi*", type="password")
-        if st.form_submit_button("📜 KAYDOL"):
+        if st.form_submit_button("📜 PORTALA KATIL"):
             if n_ad and n_pwd and col_ref:
-                col_ref.add({"ad": n_ad, "sektor": n_sek, "sifre": n_pwd, "puan": 0, "tıklanma": 0, "urunler": [], "icerik": "Dörtyol Esnafı.", "adres": "", "saatler": ""})
-                st.success("Kaydedildi!"); time.sleep(1); st.rerun()
+                col_ref.add({"ad": n_ad, "sektor": n_sek, "sifre": n_pwd, "puan": 0, "tıklanma": 0, "urunler": [], "icerik": "Dörtyol Portalı Üyesi.", "adres": "", "saatler": ""})
+                st.success("Kaydedildi!"); st.rerun()
 
 with tabs[3]:
-    pwd = st.text_input("Admin", type="password")
+    pwd = st.text_input("Yönetici Anahtarı", type="password")
     if pwd == ADMIN_SIFRE:
-        all_d = verileri_yukle()
-        for i in all_d:
-            with st.expander(f"⚙️ {i.get('ad','')}"):
-                if st.button(f"SİL: {i.get('ad')}", key=f"del_{i.get('id', i.get('ad'))}"):
+        st.success("Admin Onaylandı.")
+        for i in all_shops:
+            with st.expander(i.get('ad','')):
+                st.write(f"Şifre: {i.get('sifre')}")
+                if st.button(f"SİL: {i.get('ad')}", key=f"del_{i.get('ad')}"):
                     if col_ref and 'id' in i: col_ref.document(i['id']).delete(); st.rerun()
 
-st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.3; font-size:0.8rem;'>© {GUNCEL_YIL} Albayrax Elite Portal | v32.0 Dynamic Pricing</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.3; font-size:0.7rem;'>© {GUNCEL_YIL} Albayrax Elite Portal | v33.0 Price War Edition</div>", unsafe_allow_html=True)
