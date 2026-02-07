@@ -8,7 +8,7 @@ import re
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Dörtyol Esnaf Portalı | 2026 Masterpiece",
+    page_title="Dörtyol Esnaf Portalı | 2026 Contrast Edition",
     page_icon="🍊",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -78,7 +78,6 @@ DORTYOL_DATABASE = [
     }
 ]
 
-# --- FONKSİYONLAR ---
 def verileri_yukle():
     if col_ref:
         try:
@@ -88,34 +87,98 @@ def verileri_yukle():
         except: return DORTYOL_DATABASE
     return DORTYOL_DATABASE
 
-# --- PREMIUM UI ---
+# --- HIGH CONTRAST UI (TURUNCU & MAVİ) ---
 st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    .stApp {{ background-color: #FDFDFD; font-family: 'Inter', sans-serif; color: #1D1D1F; }}
-    .main-title {{ font-weight: 900; color: #f97316; font-size: 3rem; text-align: center; letter-spacing: -2px; margin-top: -80px; }}
-    .business-card {{ background: white; border-radius: 30px; border: 1px solid #F3F4F6; padding: 25px; margin-bottom: 20px; transition: 0.3s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
-    .business-card:hover {{ transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border-color: #f97316; }}
-    .price-tag {{ background: #f97316; color: white; padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 1.1rem; }}
-    .category-pill {{ background: #F3F4F6; padding: 10px 20px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: 0.2s; }}
-    .category-pill:hover {{ background: #f97316; color: white; }}
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
+    
+    /* Tüm Sayfa Arka Planı Turuncu */
+    .stApp {{ 
+        background-color: #FF8C00; 
+        font-family: 'Poppins', sans-serif; 
+    }}
+
+    /* Ana Başlık Derin Mavi */
+    .main-title {{ 
+        font-weight: 900; 
+        color: #001F3F; 
+        font-size: 3.5rem; 
+        text-align: center; 
+        letter-spacing: -2px; 
+        margin-top: -80px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }}
+
+    /* Alt Başlıklar ve Yazılar Mavi */
+    h1, h2, h3, p, span, label {{
+        color: #001F3F !important;
+    }}
+
+    /* Dükkan Kartları (Fark Edilmesi İçin Açık Mavi/Beyaz Karışımı) */
+    .business-card {{ 
+        background: #F0F8FF; 
+        border-radius: 25px; 
+        border: 3px solid #001F3F; 
+        padding: 25px; 
+        margin-bottom: 20px; 
+        transition: 0.3s;
+    }}
+    
+    .business-card:hover {{ 
+        transform: scale(1.02); 
+        box-shadow: 0 15px 30px rgba(0,31,63,0.2); 
+    }}
+
+    /* Fiyat Etiketi (Canlı ve Net) */
+    .price-tag {{ 
+        background: #001F3F; 
+        color: #FF8C00 !important; 
+        padding: 6px 15px; 
+        border-radius: 12px; 
+        font-weight: 900; 
+        font-size: 1.2rem; 
+    }}
+
+    /* Butonlar */
+    .stButton>button {{
+        background-color: #001F3F !important;
+        color: #FFFFFF !important;
+        border-radius: 15px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        transition: 0.3s !important;
+    }}
+    .stButton>button:hover {{
+        background-color: #003366 !important;
+        transform: translateY(-2px);
+    }}
+
+    /* Input Alanları */
+    input {{
+        border: 2px solid #001F3F !important;
+        border-radius: 10px !important;
+    }}
+
     code {{ display: none !important; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- LOGIN ---
+# --- LOGIN (MAVİ YAZILI GİRİŞ) ---
 if not st.session_state.is_site_unlocked:
     st.markdown('<div style="height:120px;"></div><h1 class="main-title">DÖRTYOL ÇARŞI</h1>', unsafe_allow_html=True)
     _, col_log, _ = st.columns([2, 1.2, 2])
     with col_log:
-        st.markdown('<div style="background:white; padding:40px; border-radius:30px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); text-align:center;">', unsafe_allow_html=True)
-        pwd = st.text_input("Giriş Anahtarı", type="password", placeholder="dortyol2026")
-        if st.button("PORTALI AKTİF ET", use_container_width=True):
+        st.markdown(f'''
+            <div style="background:#F0F8FF; padding:40px; border-radius:30px; border:4px solid #001F3F; text-align:center;">
+                <h3 style="color:#001F3F;">Elite Portal Girişi</h3>
+            </div>
+        ''', unsafe_allow_html=True)
+        pwd = st.text_input("Giriş Anahtarı", type="password", placeholder="Şifrenizi mavi kutuya yazın")
+        if st.button("PORTALI AÇ", use_container_width=True):
             if pwd == SITE_GIRIS_SIFRESI:
                 st.session_state.is_site_unlocked = True
                 st.rerun()
             else: st.error("Hatalı!")
-        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- MAIN ---
@@ -126,7 +189,7 @@ all_shops = verileri_yukle()
 
 # --- 1. KEŞFET ---
 with tabs[0]:
-    search_q = st.text_input("", placeholder="🔍 Ne aramıştınız? (Künefe, Altın, Benzin...)", key="main_search")
+    search_q = st.text_input("", placeholder="🔍 Ürün veya dükkan ara...", key="main_search")
     
     cats = ["Tümü", "Tatlıcı", "Kebapçı", "Sağlık", "Ulaşım", "Hizmet", "Yatırım", "Teknoloji"]
     c_cols = st.columns(len(cats))
@@ -142,90 +205,91 @@ with tabs[0]:
         filtered = [s for s in all_shops if (st.session_state.selected_cat == "Tümü" or s.get('sektor') == st.session_state.selected_cat) and (search_q.lower() in s.get('ad','').lower())]
         
         for s in filtered:
-            col1, col2 = st.columns([1, 2])
+            col1, col2 = st.columns([1, 2.5])
             with col1:
-                st.image(s.get('img', "https://images.unsplash.com/photo-1555066931-4365d14bab8c"), use_container_width=True)
+                st.image(s.get('img', ""), use_container_width=True)
             with col2:
                 st.markdown(f"""
                 <div class="business-card">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span style="color:#f97316; font-weight:800; font-size:0.7rem; text-transform:uppercase;">{s.get('sektor','')}</span>
-                        <span style="font-weight:800;">⭐ {s.get('puan', 0)}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:#001F3F; font-weight:900; font-size:0.8rem; text-transform:uppercase; background:#FF8C00; padding:2px 10px; border-radius:50px;">{s.get('sektor','')}</span>
+                        <span style="font-weight:900; color:#001F3F;">⭐ {s.get('puan', 0)} / 5</span>
                     </div>
-                    <h2 style="margin:10px 0; color:#111; letter-spacing:-1px;">{s.get('ad','')}</h2>
-                    <p style="color:#666; font-size:0.9rem;">{s.get('icerik','')[:150]}...</p>
-                    <small style="color:#999;">👁️ {s.get('tıklanma', 0)} Görüntülenme</small>
+                    <h2 style="margin:10px 0; color:#001F3F; font-weight:900;">{s.get('ad','')}</h2>
+                    <p style="color:#001F3F; font-size:1rem; font-weight:500;">{s.get('icerik','')[:150]}...</p>
+                    <small style="color:#003366; font-weight:700;">👁️ {s.get('tıklanma', 0)} Kez Bakıldı</small>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button(f"🏪 {s.get('ad')} İncele", key=f"v_{s.get('id', s.get('ad'))}"):
+                if st.button(f"🏪 {s.get('ad')} İncele", key=f"v_{s.get('id', s.get('ad'))}", use_container_width=True):
                     st.session_state.selected_shop_id = s.get('id', s.get('ad'))
                     if col_ref and 'id' in s: col_ref.document(s['id']).update({"tıklanma": firestore.Increment(1)})
                     st.rerun()
     else:
         shop = next((s for s in all_shops if (s.get('id') == st.session_state.selected_shop_id or s.get('ad') == st.session_state.selected_shop_id)), None)
-        if st.button("⬅️ GERİ DÖN"): st.session_state.selected_shop_id = None; st.rerun()
+        if st.button("⬅️ LİSTEYE DÖN"): st.session_state.selected_shop_id = None; st.rerun()
         if shop:
             st.image(shop.get('img',''), use_container_width=True)
-            st.markdown(f"<h1 style='color:#111; letter-spacing:-2px;'>{shop['ad']}</h1>", unsafe_allow_html=True)
-            st.info(f"📍 {shop.get('adres','')} | 🕒 {shop.get('saatler','')}")
+            st.markdown(f"<h1 style='color:#001F3F; font-weight:900;'>{shop['ad']}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background:#001F3F; color:white; padding:15px; border-radius:15px;'>📍 {shop.get('adres','')} | 🕒 {shop.get('saatler','')}</div>", unsafe_allow_html=True)
             
+            st.write("### Ürün Kataloğu")
             for item in shop.get('urunler', []):
                 st.markdown(f"""
-                <div style="background:white; border:1px solid #EEE; padding:20px; border-radius:20px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:700; color:#333;">{item['ad']}</span>
+                <div style="background:#F0F8FF; border:2px solid #001F3F; padding:20px; border-radius:20px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:900; color:#001F3F; font-size:1.1rem;">{item['ad']}</span>
                     <span class="price-tag">{item['fiyat']} ₺</span>
                 </div>
                 """, unsafe_allow_html=True)
             
             st.button("💬 WHATSAPP İLE SİPARİŞ VER", use_container_width=True)
 
-# --- 2. KAYIT ---
+# --- 2. KAYIT (YÜKSEK KONTRAST) ---
 with tabs[1]:
-    st.markdown("### 📝 İşletmenizi Kaydedin")
-    with st.form("reg_v37"):
-        n_ad = st.text_input("Dükkan Adı*")
-        n_sek = st.selectbox("Sektör*", cats[1:])
-        n_pwd = st.text_input("Yönetim Şifresi*", type="password")
-        n_icr = st.text_area("Tanıtım Yazısı")
-        if st.form_submit_button("📜 BAŞVURUYU TAMAMLA"):
+    st.markdown("<h3 style='color:#001F3F;'>📝 Yeni İşletme Kayıt Formu</h3>", unsafe_allow_html=True)
+    with st.form("reg_v38"):
+        n_ad = st.text_input("Dükkan Resmi Adı*")
+        n_sek = st.selectbox("Sektör Seçin*", cats[1:])
+        n_pwd = st.text_input("Yönetim Şifreniz*", type="password")
+        n_icr = st.text_area("Müşterilere Gösterilecek Tanıtım Yazısı")
+        if st.form_submit_button("📜 BAŞVURUYU SİSTEME GÖNDER"):
             if n_ad and n_pwd and col_ref:
                 col_ref.add({"ad": n_ad, "sektor": n_sek, "sifre": n_pwd, "puan": 0, "tıklanma": 0, "urunler": [], "icerik": n_icr, "adres": "", "saatler": "", "img": "https://images.unsplash.com/photo-1555066931-4365d14bab8c"})
-                st.success("Başarıyla eklendi!"); time.sleep(1); st.rerun()
+                st.success("Tebrikler! Dükkanınız Dörtyol Çarşı'ya eklendi."); time.sleep(1); st.rerun()
 
 # --- 3. ESNAF PANELİ ---
 with tabs[2]:
     if st.session_state.owner_shop_id is None:
-        st.markdown("### 🔐 Esnaf Yönetim Girişi")
-        l_ad = st.text_input("Dükkan Adı", placeholder="Kadir Teknoloji...")
+        st.markdown("<h3 style='color:#001F3F;'>🔐 Esnaf Yönetim Girişi</h3>", unsafe_allow_html=True)
+        l_ad = st.text_input("Kayıtlı Dükkan Adı", placeholder="Örn: Kadir Teknoloji")
         l_pwd = st.text_input("Şifre", type="password")
-        if st.button("DASHBOARD'A GİR"):
+        if st.button("DASHBOARD'U AÇ"):
             match = next((s for s in all_shops if s.get('ad','').lower().strip() == l_ad.lower().strip() and str(s.get('sifre','')).strip() == l_pwd.strip()), None)
             if match: st.session_state.owner_shop_id = match.get('id', match.get('ad')); st.rerun()
-            else: st.error("Bilgiler hatalı!")
+            else: st.error("Bilgiler uyuşmuyor!")
     else:
         shop_id = st.session_state.owner_shop_id
         d = next((s for s in all_shops if (s.get('id') == shop_id or s.get('ad') == shop_id)), None)
         if d:
-            st.subheader(f"📊 {d['ad']} Kontrol Merkezi")
-            with st.expander("📝 Ürün Ekle"):
-                u_n = st.text_input("Ürün Adı")
-                u_p = st.number_input("Fiyat", min_value=0.0)
-                if st.button("YAYINLA"):
+            st.subheader(f"📊 {d['ad']} Yönetim Merkezi")
+            with st.expander("➕ Ürün/Hizmet Ekle"):
+                u_n = st.text_input("Ürün İsmi")
+                u_p = st.number_input("Satış Fiyatı", min_value=0.0)
+                if st.button("VİTRİNE EKLE"):
                     prods = d.get('urunler', [])
                     prods.append({"ad": u_n, "fiyat": u_p})
                     col_ref.document(d['id']).update({"urunler": prods})
-                    st.success("Eklendi!"); st.rerun()
-            if st.button("🚪 PANELİ KAPAT"): st.session_state.owner_shop_id = None; st.rerun()
+                    st.success("Ürün anında yayına alındı!"); time.sleep(1); st.rerun()
+            if st.button("🚪 GÜVENLİ ÇIKIŞ"): st.session_state.owner_shop_id = None; st.rerun()
 
 # --- 4. ADMİN ---
 with tabs[3]:
-    pwd = st.text_input("Yönetici Anahtarı", type="password", key="admin_pwd")
+    pwd = st.text_input("Süper Yönetici Şifresi", type="password", key="admin_pwd_v38")
     if pwd == ADMIN_SIFRE:
-        st.success("Admin Onaylandı.")
+        st.success("Admin Kontrolü Onaylandı.")
         for i in all_shops:
-            with st.expander(i.get('ad','')):
-                st.write(f"Şifre: {i.get('sifre')}")
-                if st.button(f"SİL: {i.get('ad')}", key=f"del_{i.get('ad')}"):
+            with st.expander(f"⚙️ {i.get('ad','')} Denetle"):
+                st.write(f"Şifre: **{i.get('sifre')}**")
+                if st.button(f"KAYDI SİL: {i.get('ad')}", key=f"del_{i.get('ad')}"):
                     if col_ref and 'id' in i: col_ref.document(i['id']).delete(); st.rerun()
 
-st.markdown(f"<div style='text-align:center; padding-top:100px; opacity:0.3; font-size:0.7rem;'>© {GUNCEL_YIL} Albayrax Dijital Network | v37.0 Masterpiece Python</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center; padding-top:100px; color:#001F3F; font-weight:800; font-size:0.8rem;'>© {GUNCEL_YIL} Albayrax Dijital Network | v38.0 High Contrast Edition</div>", unsafe_allow_html=True)
