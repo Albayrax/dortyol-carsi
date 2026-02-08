@@ -8,8 +8,8 @@ import requests
 
 # --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Dörtyol Çarşı | v46 Bug Fix",
-    page_icon="🤖",
+    page_title="Dörtyol Çarşı | v49 Competition Engine",
+    page_icon="🔥",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -19,7 +19,7 @@ ADMIN_SIFRE = "dortyol31"
 SITE_GIRIS_SIFRESI = "dortyol2026"
 APP_ID = "dortyol-carsi-v1"
 GUNCEL_YIL = "2026"
-apiKey = "" # Çevresel değişkenlerden otomatik çekilir
+apiKey = st.secrets.get("gemini_api_key", "")
 
 # --- FIREBASE BAĞLANTISI ---
 if not firebase_admin._apps:
@@ -29,11 +29,11 @@ if not firebase_admin._apps:
             cred = credentials.Certificate(key_dict)
             firebase_admin.initialize_app(cred, {'storageBucket': f"{key_dict.get('project_id')}.firebasestorage.app"})
     except Exception as e:
-        st.error(f"Bağlantı Hatası: {e}")
+        st.error(f"Sistem hatası: {e}")
 
 db = firestore.client() if firebase_admin._apps else None
 
-# --- FIREBASE PATHS (RULE 1) ---
+# --- FIREBASE HELPERS (RULE 1) ---
 def get_col(col_name):
     return db.collection("artifacts").document(APP_ID).collection("public").document("data").collection(col_name)
 
@@ -43,49 +43,39 @@ if 'selected_cat' not in st.session_state: st.session_state.selected_cat = "Tüm
 if 'selected_shop_id' not in st.session_state: st.session_state.selected_shop_id = None
 if 'owner_shop_id' not in st.session_state: st.session_state.owner_shop_id = None
 
-# --- SMART AI FUNCTIONS (Gemini Grounding) ---
-def get_smart_info(query_type):
-    """Google Search destekli anlık bilgi çekme fonksiyonu"""
-    system_prompt = "Sen Dörtyol Çarşı asistanısın. Sadece istenen bilgiyi kısa, net ve markdown formatında ver."
-    user_query = ""
+# --- AI FOR PUBLIC DATA (PHARMACIES) ---
+def get_ai_public_info(query_type):
+    """Kamu verilerini (Eczane, Doktor vb.) internetten çeker"""
+    if not apiKey: return "⚠️ API Anahtarı eksik."
+    system_prompt = "Sen Dörtyol Çarşı kamu asistanısın. Sadece markdown formatında net bilgi ver."
+    user_query = f"Bugün ({datetime.now().strftime('%d.%m.%Y')}) Hatay Dörtyol'daki nöbetçi eczaneleri ve varsa nöbetçi çocuk doktorlarını listele."
     
-    if query_type == "fuel":
-        user_query = "Bugün Hatay Dörtyol ilçesindeki güncel Benzin (95 Oktan), Motorin ve LPG litre fiyatlarını liste halinde ver."
-    elif query_type == "pharmacy":
-        user_query = f"Bugün ({datetime.now().strftime('%d %B %Y')}) Hatay Dörtyol ilçesindeki nöbetçi eczanelerin isim, adres ve telefonlarını ver."
-
     payload = {
         "contents": [{"parts": [{"text": user_query}]}],
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "tools": [{"google_search": {}}]
     }
-    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={apiKey}"
-    
     try:
-        for delay in [1, 2, 4]:
-            response = requests.post(url, json=payload)
-            if response.status_code == 200:
-                result = response.json()
-                return result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', "Bilgi alınamadı.")
-            time.sleep(delay)
-        return "API limitine takıldı veya bağlantı sağlanamadı."
-    except:
-        return "Bağlantı hatası oluştu."
+        res = requests.post(url, json=payload, timeout=30)
+        if res.status_code == 200:
+            return res.json().get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', "Bilgi bulunamadı.")
+        return "Servis şu an meşgul."
+    except: return "Bağlantı hatası."
 
-# --- CSS: ULTRA CONTRAST ---
+# --- CSS: Hırçın Rekabet Tasarımı ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
     .stApp {{ background-color: #FF8C00; font-family: 'Outfit', sans-serif; }}
     h1, h2, h3, h4, p, span, label, div {{ color: #001F3F !important; font-weight: 700; }}
     .main-title {{ font-size: 3.5rem; text-align: center; margin-top: -80px; text-transform: uppercase; letter-spacing: -2px; }}
-    .info-bar {{ background: #001F3F; color: #FF8C00 !important; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px; font-weight: 900; box-shadow: 0 10px 20px rgba(0,31,63,0.2); border: 2px solid white; }}
-    .business-card {{ background: white; border-radius: 30px; padding: 25px; margin-bottom: 25px; border: 4px solid #001F3F; box-shadow: 10px 10px 0px #001F3F; }}
-    .smart-widget {{ background: #001F3F; color: #FFFFFF !important; padding: 25px; border-radius: 25px; border: 3px solid #FFFFFF; margin-bottom: 15px; }}
-    .price-badge {{ background: #001F3F; color: white !important; padding: 8px 15px; border-radius: 12px; font-weight: 900; }}
-    .stButton>button {{ background-color: #001F3F !important; color: white !important; border-radius: 15px !important; font-weight: 800 !important; padding: 12px 20px !important; width: 100%; border: none !important; }}
-    input, textarea, select {{ border: 3px solid #001F3F !important; border-radius: 12px !important; font-weight: 700 !important; }}
+    .competition-card {{ background: #001F3F; color: #FFFFFF !important; padding: 25px; border-radius: 25px; border: 4px solid white; box-shadow: 0 15px 30px rgba(0,0,0,0.3); margin-bottom: 20px; }}
+    .competition-card h4, .competition-card p, .competition-card span {{ color: #FFFFFF !important; }}
+    .business-card {{ background: white; border-radius: 25px; padding: 25px; margin-bottom: 20px; border: 4px solid #001F3F; box-shadow: 8px 8px 0px #001F3F; transition: 0.3s; }}
+    .business-card:hover {{ transform: scale(1.02); }}
+    .price-badge {{ background: #001F3F; color: #FF8C00 !important; padding: 8px 15px; border-radius: 12px; font-weight: 900; font-size: 1.2rem; }}
+    .stButton>button {{ background-color: #001F3F !important; color: white !important; border-radius: 12px !important; font-weight: 800; border: none !important; width: 100%; padding: 10px; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -95,132 +85,136 @@ if not st.session_state.is_site_unlocked:
     _, col_log, _ = st.columns([2, 1.5, 2])
     with col_log:
         pwd = st.text_input("Giriş Anahtarı", type="password", placeholder="****")
-        if st.button("SİSTEME GİR"):
+        if st.button("SİSTEMİ BAŞLAT"):
             if pwd == SITE_GIRIS_SIFRESI:
                 st.session_state.is_site_unlocked = True
                 st.rerun()
             else: st.error("Hatalı!")
     st.stop()
 
-# --- HEADER & NEWS TICKER ---
+# --- HEADER ---
 st.markdown('<h1 class="main-title">DÖRTYOL PORTAL</h1>', unsafe_allow_html=True)
 
-# Haber Bandı Hata Korumalı (FIX)
+# --- REKABET RADARI (HACIM, BURASI SENİN 5M KAZANACAĞIN YER) ---
+all_shops = []
 try:
-    sistem_doc = get_col("sistem_bilgi").document("genel").get()
-    haber_metni = "Dörtyol Dijital Çarşı v46 Yayında!"
-    if sistem_doc.exists:
-        s_data = sistem_doc.to_dict()
-        if s_data and "haber" in s_data:
-            haber_metni = s_data["haber"]
-    st.markdown(f'<div class="info-bar">🚀 {haber_metni}</div>', unsafe_allow_html=True)
-except:
-    st.markdown('<div class="info-bar">📢 Dörtyol Dijital Çarşı Yayında!</div>', unsafe_allow_html=True)
+    shops_docs = get_col("dukkanlar").stream()
+    all_shops = [dict(doc.to_dict(), id=doc.id) for doc in shops_docs]
+except: pass
 
-tabs = st.tabs(["💎 ÇARŞI", "🏥 AKILLI REHBER", "📝 DÜKKAN AÇ", "🔐 PANEL", "🔑 ADM"])
+st.markdown("### 🔥 DÖRTYOL REKABET RADARI")
+col_war1, col_war2, col_war3 = st.columns(3)
+
+# En Ucuzları Bul (Dükkan verilerinden)
+fuel_list = []
+bread_list = []
+for s in all_shops:
+    for u in s.get('urunler', []):
+        u_name = u['ad'].lower()
+        if "benzin" in u_name or "95" in u_name: fuel_list.append({"dükkan": s['ad'], "fiyat": u['fiyat']})
+        if "ekmek" in u_name: bread_list.append({"dükkan": s['ad'], "fiyat": u['fiyat']})
+
+with col_war1:
+    if fuel_list:
+        cheapest_fuel = min(fuel_list, key=lambda x: x['fiyat'])
+        st.markdown(f"""<div class="competition-card"><h4>⛽ EN UCUZ BENZİN</h4><p>{cheapest_fuel['dükkan']}</p><span>{cheapest_fuel['fiyat']} ₺</span></div>""", unsafe_allow_html=True)
+    else: st.markdown("""<div class="competition-card"><h4>⛽ BENZİN SAVAŞI</h4><p>Veri Bekleniyor...</p></div>""", unsafe_allow_html=True)
+
+with col_war2:
+    if bread_list:
+        cheapest_bread = min(bread_list, key=lambda x: x['fiyat'])
+        st.markdown(f"""<div class="competition-card"><h4>🍞 EN UCUZ EKMEK</h4><p>{cheapest_bread['dükkan']}</p><span>{cheapest_bread['fiyat']} ₺</span></div>""", unsafe_allow_html=True)
+    else: st.markdown("""<div class="competition-card"><h4>🍞 FIRIN REKABETİ</h4><p>Veri Bekleniyor...</p></div>""", unsafe_allow_html=True)
+
+with col_war3:
+    st.markdown("""<div class="competition-card"><h4>🏆 ELİTE ESNAF</h4><p>Antik Kral Künefe</p><span>9.9 Puan</span></div>""", unsafe_allow_html=True)
+
+# --- ANA TABLAR ---
+tabs = st.tabs(["💎 ÇARŞI", "🏥 KAMU REHBERİ", "📝 DÜKKAN AÇ", "🔐 PANEL", "🔑 ADM"])
 
 # --- TAB 1: ÇARŞI ---
 with tabs[0]:
-    col_s1, col_s2 = st.columns([3, 1])
-    search_q = col_s1.text_input("", placeholder="🔍 Ürün veya dükkan ara...", key="search_box_v46")
-    
+    search_q = st.text_input("", placeholder="🔍 Ürün veya dükkan ara...", key="search_v49")
     cats = ["Tümü", "Tatlıcı", "Kebapçı", "Ulaşım", "Sağlık", "Teknoloji", "Yatırım"]
-    cat_cols = st.columns(len(cats))
+    c_cols = st.columns(len(cats))
     for i, c in enumerate(cats):
-        if cat_cols[i].button(c, key=f"cat_v46_{c}"):
+        if c_cols[i].button(c, key=f"c_v49_{c}"):
             st.session_state.selected_cat = c
             st.session_state.selected_shop_id = None
             st.rerun()
 
     if st.session_state.selected_shop_id is None:
-        try:
-            shops_ref = get_col("dukkanlar")
-            shops = [dict(doc.to_dict(), id=doc.id) for doc in shops_ref.stream()]
-            filtered = [s for s in shops if (st.session_state.selected_cat == "Tümü" or s.get('sektor') == st.session_state.selected_cat) and (search_q.lower() in s.get('ad','').lower())]
-            
-            for s in filtered:
-                st.markdown(f'<div class="business-card">', unsafe_allow_html=True)
-                c1, c2 = st.columns([1, 2.5])
-                with c1: st.image(s.get('img', "https://images.unsplash.com/photo-1555066931-4365d14bab8c"), use_container_width=True)
-                with c2:
-                    st.markdown(f"### {s.get('ad')}")
-                    st.write(s.get('icerik', '')[:120] + "...")
-                    if st.button(f"Detayları Gör: {s.get('ad')}", key=f"btn_v46_{s['id']}"):
-                        st.session_state.selected_shop_id = s['id']
-                        shops_ref.document(s['id']).update({"tıklanma": firestore.Increment(1)})
-                        st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
-        except: st.warning("Veriler yükleniyor...")
+        filtered = [s for s in all_shops if (st.session_state.selected_cat == "Tümü" or s.get('sektor') == st.session_state.selected_cat) and (search_q.lower() in s.get('ad','').lower())]
+        for s in filtered:
+            st.markdown('<div class="business-card">', unsafe_allow_html=True)
+            col1, col2 = st.columns([1, 2.5])
+            with col1: st.image(s.get('img', "https://images.unsplash.com/photo-1555066931-4365d14bab8c"), use_container_width=True)
+            with col2:
+                st.markdown(f"### {s.get('ad')}")
+                st.write(s.get('icerik', '')[:120] + "...")
+                if st.button(f"Göz At: {s.get('ad')}", key=f"btn_{s['id']}"):
+                    st.session_state.selected_shop_id = s['id']
+                    get_col("dukkanlar").document(s['id']).update({"tıklanma": firestore.Increment(1)})
+                    st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
     else:
+        # DETAY SAYFASI
         shop_id = st.session_state.selected_shop_id
-        shop_doc = get_col("dukkanlar").document(shop_id).get()
-        if shop_doc.exists:
-            s = shop_doc.to_dict()
-            if st.button("⬅️ Çarşıya Dön"): st.session_state.selected_shop_id = None; st.rerun()
-            st.image(s.get('img',''), use_container_width=True)
-            st.title(s['ad'])
-            for p in s.get('urunler', []):
-                st.markdown(f"""<div style="background:white; padding:15px; border-radius:15px; border:2px solid #001F3F; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;"><span><b>{p['ad']}</b></span><span class="price-badge">{p['fiyat']} ₺</span></div>""", unsafe_allow_html=True)
+        shop_data = next((s for s in all_shops if s['id'] == shop_id), None)
+        if st.button("← Geri"): st.session_state.selected_shop_id = None; st.rerun()
+        if shop_data:
+            st.image(shop_data.get('img',''), use_container_width=True)
+            st.title(shop_data['ad'])
+            for p in shop_data.get('urunler', []):
+                st.markdown(f"""<div style="background:white; padding:20px; border-radius:15px; border:2px solid #001F3F; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:1.2rem;"><b>{p['ad']}</b></span><span class="price-badge">{p['fiyat']} ₺</span></div>""", unsafe_allow_html=True)
+            st.button(f"💬 WHATSAPP: {shop_data.get('tel','0000')}", use_container_width=True)
 
-# --- TAB 2: AKILLI REHBER (FIXED) ---
+# --- TAB 2: KAMU REHBERİ (AI) ---
 with tabs[1]:
-    st.subheader("🤖 Dörtyol Akıllı Bilgi Servisi")
-    
-    # smart_ref Ataması Düzeltildi (FIX)
+    st.subheader("🏥 Kamu ve Sağlık Bilgileri")
     try:
-        doc_snap = get_col("sistem_bilgi").document("genel").get()
-        smart_ref = doc_snap.to_dict() if doc_snap.exists else {}
-    except:
-        smart_ref = {}
+        public_ref = get_col("sistem_bilgi").document("kamu").get()
+        public_data = public_ref.to_dict() if public_ref.exists else {}
+    except: public_data = {}
 
-    if not smart_ref:
-        st.info("Bilgiler henüz admin tarafından güncellenmedi. Lütfen 'ADM' sekmesinden AI verilerini çekin.")
+    if st.button("🤖 YAPAY ZEKADAN GÜNCEL LİSTEYİ İSTE"):
+        with st.spinner("AI interneti tarıyor..."):
+            res = get_ai_public_info("pharmacy")
+            get_col("sistem_bilgi").document("kamu").set({"pharmacy_info": res}, merge=True)
+            st.success("Bilgiler internetten çekildi!")
+            st.rerun()
 
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown('<div class="smart-widget"><h4>⛽ Güncel Akaryakıt</h4></div>', unsafe_allow_html=True)
-        st.markdown(smart_ref.get("fuel_info", "*Henüz veri yok.*") if smart_ref else "*Henüz veri yok.*")
-    
-    with c2:
-        st.markdown('<div class="smart-widget"><h4>💊 Nöbetçi Eczaneler</h4></div>', unsafe_allow_html=True)
-        st.markdown(smart_ref.get("pharmacy_info", "*Henüz veri yok.*") if smart_ref else "*Henüz veri yok.*")
+    st.markdown(public_data.get("pharmacy_info", "*Henüz veri çekilmedi.*"))
 
-# --- TAB 5: ADMİN ---
-with tabs[4]:
-    adm_pwd = st.text_input("Admin Şifre", type="password", key="adm_v46")
-    if adm_pwd == ADMIN_SIFRE:
-        st.subheader("⚙️ Akıllı Veri & Haber Yönetimi")
-        
-        with st.expander("📢 Haber Bandını Değiştir"):
-            yeni_haber = st.text_input("Duyuru Metni")
-            if st.button("DUYURUYU YAYINLA"):
-                get_col("sistem_bilgi").document("genel").set({"haber": yeni_haber}, merge=True)
-                st.success("Duyuru yayınlandı!"); time.sleep(1); st.rerun()
-        
-        st.write("### AI Veri Çekme (Anlık)")
-        col_up1, col_up2 = st.columns(2)
-        if col_up1.button("🤖 AKARYAKIT VERİSİ ÇEK"):
-            with st.spinner("Çekiliyor..."):
-                fuel_data = get_smart_info("fuel")
-                get_col("sistem_bilgi").document("genel").set({"fuel_info": fuel_data}, merge=True)
-                st.success("Güncellendi!"); st.rerun()
-        
-        if col_up2.button("🚑 NÖBETÇİ LİSTESİ ÇEK"):
-            with st.spinner("Taranıyor..."):
-                pharmacy_data = get_smart_info("pharmacy")
-                get_col("sistem_bilgi").document("genel").set({"pharmacy_info": pharmacy_data}, merge=True)
-                st.success("Güncellendi!"); st.rerun()
-        
-        st.divider()
-        st.write("### Dükkan Yönetimi")
-        try:
-            d_docs = get_col("dukkanlar").stream()
-            for d in d_docs:
-                d_data = d.to_dict()
-                with st.expander(f"{d_data.get('ad','Adsız')}"):
-                    if st.button(f"SİL: {d_data.get('ad')}", key=f"del_v46_{d.id}"):
-                        get_col("dukkanlar").document(d.id).delete()
-                        st.rerun()
-        except: pass
+# --- TAB 4: ESNAF PANELİ ---
+with tabs[3]:
+    if st.session_state.owner_shop_id is None:
+        st.subheader("🔐 Esnaf Yönetim Paneli")
+        l_ad = st.text_input("Dükkan Adı")
+        l_pwd = st.text_input("Panel Şifresi", type="password")
+        if st.button("DASHBOARD'A GİR"):
+            match = next((s for s in all_shops if s.get('ad') == l_ad and s.get('sifre') == l_pwd), None)
+            if match:
+                st.session_state.owner_shop_id = match['id']
+                st.rerun()
+            else: st.error("Bilgiler Hatalı!")
+    else:
+        shop_id = st.session_state.owner_shop_id
+        s_data = next((s for s in all_shops if s['id'] == shop_id), None)
+        if s_data:
+            st.success(f"Dükkan: {s_data['ad']}")
+            with st.expander("📝 Fiyat Güncelle & Rekabete Gir"):
+                st.warning("Burada fiyatı düşürürseniz ana sayfadaki 'REKABET RADARI'nda en üstte görünürsünüz!")
+                u_n = st.text_input("Ürün Adı (Örn: Benzin 95 veya Ekmek)")
+                u_p = st.number_input("Satış Fiyatı (₺)", min_value=0.0, step=0.1)
+                if st.button("FİYATI YAYINLA"):
+                    prods = s_data.get('urunler', [])
+                    # Eski ürünü silip yeniyi ekle (güncelleme mantığı)
+                    prods = [p for p in prods if p['ad'].lower() != u_n.lower()]
+                    prods.append({"ad": u_n, "fiyat": u_p})
+                    get_col("dukkanlar").document(shop_id).update({"urunler": prods})
+                    st.success("Tebrikler! Rekabette öne geçtiniz."); time.sleep(1); st.rerun()
+            
+            if st.button("Çıkış Yap"): st.session_state.owner_shop_id = None; st.rerun()
 
-st.markdown(f"<div style='text-align:center; padding-top:100px; color:#001F3F; opacity:0.6;'>© {GUNCEL_YIL} Albayrax Real-Time v46 | Dörtyol Dijital Çarşı</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center; padding-top:100px; color:#001F3F; opacity:0.5;'>© {GUNCEL_YIL} Albayrax 5M Vision v49 | Dörtyol Rekabet Portalı</div>", unsafe_allow_html=True)
