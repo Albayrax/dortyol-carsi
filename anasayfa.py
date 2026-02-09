@@ -9,7 +9,7 @@ import re
 
 # --- 1. SİSTEM YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Dörtyol Portal | v63 Elite Empire",
+    page_title="Dörtyol Portal | v64 Elite & Smart",
     page_icon="🍊",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -20,8 +20,12 @@ SITE_GIRIS_SIFRESI = "dortyol2026"
 APP_ID = "dortyol-carsi-v1"
 GUNCEL_YIL = "2026"
 
+# API Anahtarı Streamlit Secrets'tan çekilir
+# Dashboard -> Settings -> Secrets -> gemini_api_key = "..."
+apiKey = st.secrets.get("gemini_api_key", "")
+
 MAHALLELER = ["Tümü", "Numuneevler", "Çaylı", "Ocaklı", "Yeşilköy", "Kuzuculu", "Yeniyurt", "Altınçağ", "Özerli", "Sanayi"]
-KATEGORILER = ["Tümü", "Tatlıcı", "Kebapçı", "Ulaşım", "Gıda", "Hizmet", "Teknoloji"]
+KATEGORILER = ["Tümü", "Tatlıcı", "Kebapçı", "Ulaşım", "Gıda", "Hizmet", "Teknoloji", "Kuyumcu", "Mobilya"]
 
 # --- 2. FIREBASE BAĞLANTISI ---
 if not firebase_admin._apps:
@@ -37,7 +41,33 @@ db = firestore.client() if firebase_admin._apps else None
 def get_col(col_name):
     return db.collection("artifacts").document(APP_ID).collection("public").document("data").collection(col_name)
 
-# --- 3. GÖRSEL TASARIM (MIRROR AI STYLE) ---
+# --- 3. AKILLI AI MOTORU (SPESİFİK SEKTÖRLER İÇİN) ---
+def get_ai_niche_data(niche_type):
+    """Sadece hareketli sektörler için anlık veri çeker"""
+    if not apiKey: return "⚠️ API Anahtarı bağlı değil."
+    
+    prompt = ""
+    if niche_type == "gold":
+        prompt = "Bugün için güncel Gram Altın, Çeyrek Altın ve 22 Ayar bilezik alış-satış fiyatlarını kısa bir liste olarak ver."
+    elif niche_type == "fuel":
+        prompt = "Bugün Hatay Dörtyol'daki güncel Benzin ve Motorin litre fiyatlarını (EPDK verilerine yakın) ver."
+    elif niche_type == "pharmacy":
+        prompt = f"Bugün ({datetime.now().strftime('%d.%m.%Y')}) Hatay Dörtyol'daki nöbetçi eczaneleri listele."
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "tools": [{"google_search": {}}]
+    }
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={apiKey}"
+    
+    try:
+        res = requests.post(url, json=payload, timeout=30)
+        if res.status_code == 200:
+            return res.json().get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', "Veri çekilemedi.")
+        return "Limit dolmuş olabilir, lütfen daha sonra deneyin."
+    except: return "Bağlantı hatası."
+
+# --- 4. GÖRSEL TASARIM ---
 st.markdown("""
     <style>
     .stApp {
@@ -49,6 +79,17 @@ st.markdown("""
         color: white !important; 
         text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
         font-family: 'Inter', sans-serif;
+    }
+    .welcome-banner {
+        background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200');
+        background-size: cover;
+        background-position: center;
+        padding: 60px 20px;
+        border-radius: 30px;
+        text-align: center;
+        margin-bottom: 30px;
+        border: 2px solid white;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.4);
     }
     .content-card {
         background: white;
@@ -62,176 +103,130 @@ st.markdown("""
         color: #001F3F !important;
         text-shadow: none !important;
     }
-    .premium-border { border: 4px solid #FFD700 !important; box-shadow: 8px 8px 0px #FFD700 !important; }
+    .news-badge {
+        padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase;
+    }
+    .badge-vefat { background: #001F3F; color: white !important; }
+    .badge-indirim { background: #2E7D32; color: white !important; }
     .stButton>button {
         background-color: white !important;
         color: #001F3F !important;
         border-radius: 12px !important;
         font-weight: 800 !important;
         border: 3px solid #001F3F !important;
-        width: 100%;
     }
-    .news-badge {
-        padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase;
-    }
-    .badge-vefat { background: #001F3F; color: white !important; }
-    .badge-indirim { background: #2E7D32; color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SİSTEM BAŞLATICI (MANDATORY DATA) ---
-def seed_v63():
-    if db:
-        # 1. DÜKKANLAR (EKMEK FİYATI GÜNCELLENDİ)
-        d_col = get_col("dukkanlar")
-        shops = [
-            {"ad": "Shell Dörtyol", "sektor": "Ulaşım", "sifre": "123", "img": "https://images.unsplash.com/photo-1621230181431-7e8790089851?w=800", "icerik": "7/24 Güvenli Yakıt", "is_premium": True, "tıklanma": 1250, "urunler": [{"ad": "Kurşunsuz 95", "fiyat": 60.50}]},
-            {"ad": "Meydan Fırını", "sektor": "Gıda", "sifre": "123", "img": "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800", "icerik": "Sıcak Taş Fırın Ekmeği", "is_premium": False, "tıklanma": 800, "urunler": [{"ad": "Ekmek", "fiyat": 15.00}]},
-            {"ad": "Antik Kral Künefe", "sektor": "Tatlıcı", "sifre": "123", "img": "https://images.unsplash.com/photo-1541450805268-4822a3a774ca?w=800", "icerik": "Tescilli Hatay Lezzeti", "is_premium": True, "tıklanma": 3400, "urunler": [{"ad": "Kral Hasırı", "fiyat": 280.0}]}
-        ]
-        for s in shops: d_col.add(s)
-        # 2. NABIZ (MAHALLE BAZLI BOŞLUKLAR DOLUYOR)
-        n_col = get_col("haberler")
-        notices = [
-            {"tip": "vefat", "baslik": "Vefat Haberi", "mahalle": "Numuneevler", "detay": "Salih Yılmaz vefat etmiştir.", "tarih": datetime.now()},
-            {"tip": "kesinti", "baslik": "Sanayi Elektrik Kesintisi", "mahalle": "Sanayi", "detay": "Bakım çalışması nedeniyle akşam kesinti olacaktır.", "tarih": datetime.now()},
-            {"tip": "indirim", "baslik": "Altınçağ Market Fırsatı", "mahalle": "Altınçağ", "detay": "Tüm deterjanlarda %30 indirim.", "tarih": datetime.now()}
-        ]
-        for n in notices: n_col.add(n)
-
-# --- 5. ANA MANTIK VE GİRİŞ ---
+# --- 5. GİRİŞ VE ANA MANTIK ---
 if 'is_site_unlocked' not in st.session_state: st.session_state.is_site_unlocked = False
 if 'selected_shop_id' not in st.session_state: st.session_state.selected_shop_id = None
 
 if not st.session_state.is_site_unlocked:
-    st.markdown('<h1 style="text-align:center; font-size:3rem; font-weight:900;">DÖRTYOL DİJİTAL</h1>', unsafe_allow_html=True)
-    _, c, _ = st.columns([1, 3, 1])
+    st.markdown('<div class="welcome-banner"><h1>DÖRTYOL PORTALI\'NA<br>HOŞ GELDİNİZ</h1><p>Şehrin En Akıllı Dijital Rehberi</p></div>', unsafe_allow_html=True)
+    _, c, _ = st.columns([1, 2, 1])
     with c:
         pwd = st.text_input("Giriş Anahtarı", type="password")
-        if st.button("PORTALI AÇ"):
+        if st.button("PORTALI AKTİF ET"):
             if pwd == SITE_GIRIS_SIFRESI: st.session_state.is_site_unlocked = True; st.rerun()
     st.stop()
 
 # --- HEADER ---
-st.markdown('<h1 style="text-align:center; font-weight:900; letter-spacing:-2px;">DÖRTYOL PORTAL</h1>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; padding: 20px 0;"><h1 style="font-size:3.5rem; font-weight:900; margin-bottom:0;">DÖRTYOL PORTAL</h1><p style="opacity:0.8;">Gerçek Veri, Gerçek Esnaf, Gerçek Dörtyol</p></div>', unsafe_allow_html=True)
 
-tabs = st.tabs(["📢 NABIZ", "🏛️ ÇARŞI", "🏆 SKOR TABLOSU", "💼 KARİYER", "🔑 ADMIN"])
+tabs = st.tabs(["📢 NABIZ", "🏛️ ÇARŞI", "🏆 SKOR", "💼 KARİYER", "🔑 ADMIN"])
 
-# --- TAB 0: NABIZ (MAHALLE ODAKLI) ---
+# --- TAB 0: NABIZ (SEKTÖR VE MAHALLE FİLTRELİ) ---
 with tabs[0]:
-    col1, col2 = st.columns([2, 1])
-    m_filtre = col1.selectbox("Kendi Mahallenizi Seçin:", MAHALLELER)
-    t_filtre = col2.selectbox("Tip:", ["Tümü", "vefat", "kesinti", "indirim"])
+    st.markdown('<div class="pulse-card" style="padding:10px; border-radius:15px; background:rgba(255,255,255,0.1);">', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    m_fil = c1.selectbox("📍 Mahalle", MAHALLELER)
+    s_fil = c2.selectbox("🏢 Sektör", KATEGORILER)
+    t_fil = c3.selectbox("📰 Haber Tipi", ["Tümü", "vefat", "kesinti", "indirim"])
+    st.markdown('</div>', unsafe_allow_html=True)
     
+    # Haberleri Çek ve Filtrele
     try:
         query = get_col("haberler").order_by("tarih", direction="DESCENDING").limit(20).stream()
         docs = [d.to_dict() for d in query]
+        if m_fil != "Tümü": docs = [d for d in docs if d.get('mahalle') == m_fil]
+        if s_fil != "Tümü": docs = [d for d in docs if d.get('sektor') == s_fil]
+        if t_fil != "Tümü": docs = [d for d in docs if d.get('tip') == t_fil]
         
-        if m_filtre != "Tümü": docs = [d for d in docs if d.get('mahalle') == m_filtre]
-        if t_filtre != "Tümü": docs = [d for d in docs if d.get('tip') == t_filtre]
-        
-        if not docs: st.info(f"{m_filtre} mahallesinde şu an güncel bir olay bulunmuyor.")
+        if not docs: st.info(f"Seçilen kriterlere göre güncel bir haber bulunamadı.")
         for d in docs:
             st.markdown(f"""
             <div class="content-card">
                 <span class="news-badge badge-{d.get('tip','vefat')}">{d.get('tip','duyuru')}</span>
                 <small style="float:right; color:gray;">{d['tarih'].strftime('%d.%m.%Y')}</small>
-                <h4 style="margin:5px 0;">{d['baslik']}</h4>
-                <p>📍 <b>Mahalle:</b> {d.get('mahalle')} | {d['detay']}</p>
+                <h4>{d['baslik']}</h4>
+                <p style="font-size:0.8rem; margin:0;">📍 {d.get('mahalle')} | 🏢 {d.get('sektor','Genel')}</p>
+                <p style="margin-top:10px;">{d['detay']}</p>
             </div>
             """, unsafe_allow_html=True)
-    except: st.info("Haberler yükleniyor...")
+    except: st.write("Haberler yükleniyor...")
 
-# --- TAB 1: ÇARŞI (KATEGORİ & PREMİUM) ---
+# --- TAB 1: ÇARŞI (SEKTÖREL DÜKKANLAR) ---
 with tabs[1]:
     if st.session_state.selected_shop_id is None:
-        c_filtre = st.selectbox("Sektör Seçin:", KATEGORILER)
-        search = st.text_input("🔍 Mağaza Ara...")
-        
+        c_search = st.selectbox("Sektöre Göz Atın:", KATEGORILER)
         try:
             shops = [dict(doc.to_dict(), id=doc.id) for doc in get_col("dukkanlar").stream()]
-            if c_filtre != "Tümü": shops = [s for s in shops if s.get('sektor') == c_filtre]
-            if search: shops = [s for s in shops if search.lower() in s.get('ad','').lower()]
+            if c_search != "Tümü": shops = [s for s in shops if s.get('sektor') == c_search]
             
-            # Premiumları En Üste Al
+            # Premiumları öne çıkar
             shops = sorted(shops, key=lambda x: x.get('is_premium', False), reverse=True)
             
             for s in shops:
-                p_class = "premium-border" if s.get('is_premium') else ""
+                premium_style = "border: 4px solid #FFD700;" if s.get('is_premium') else ""
                 st.markdown(f"""
-                <div class="content-card {p_class}">
+                <div class="content-card" style="{premium_style}">
                     <h3 style="margin:0;">{s['ad']} {'⭐' if s.get('is_premium') else ''}</h3>
-                    <p style="margin:5px 0; font-size:0.8rem; color:gray;">{s.get('sektor')} | 👁️ {s.get('tıklanma', 0)} Görüntülenme</p>
+                    <p style="margin:0; font-size:0.8rem; color:gray;">{s.get('sektor')} | 👁️ {s.get('tıklanma', 0)} Kişi Baktı</p>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button(f"🏪 Mağazayı Gez: {s['ad']}", key=f"v_{s['id']}"):
+                if st.button(f"🏪 Dükkana Gir: {s['ad']}", key=f"btn_s_{s['id']}"):
                     st.session_state.selected_shop_id = s['id']
                     get_col("dukkanlar").document(s['id']).update({"tıklanma": firestore.Increment(1)})
                     st.rerun()
         except: st.write("Yükleniyor...")
     else:
-        # DETAY SAYFASI
-        doc = get_col("dukkanlar").document(st.session_state.selected_shop_id).get()
+        # DETAY
+        sid = st.session_state.selected_shop_id
+        doc = get_col("dukkanlar").document(sid).get()
         if doc.exists:
             s = doc.to_dict()
-            if st.button("⬅️ Geri Dön"): st.session_state.selected_shop_id = None; st.rerun()
-            if s.get('img'): st.image(s['img'], use_container_width=True)
+            if st.button("⬅️ Geri"): st.session_state.selected_shop_id = None; st.rerun()
             st.title(s['ad'])
             for p in s.get('urunler', []):
                 st.markdown(f'<div class="content-card" style="display:flex; justify-content:space-between;"><b>{p["ad"]}</b><b style="color:green;">{p["fiyat"]} ₺</b></div>', unsafe_allow_html=True)
 
-# --- TAB 2: SKOR TABLOSU (LEADERBOARD) ---
-with tabs[2]:
-    st.subheader("🏆 Dörtyol Esnaf Liderleri")
-    s_tab = st.selectbox("Sektöre Göre Sırala:", KATEGORILER[1:])
-    try:
-        all_s = [doc.to_dict() for doc in get_col("dukkanlar").stream()]
-        filtered_s = [s for s in all_s if s.get('sektor') == s_tab]
-        sorted_s = sorted(filtered_s, key=lambda x: x.get('tıklanma', 0), reverse=True)
-        
-        for i, s in enumerate(sorted_s[:10]):
-            medal = "🥇" if i==0 else "🥈" if i==1 else "🥉" if i==2 else f"{i+1}."
-            st.markdown(f"""
-            <div class="content-card" style="display:flex; justify-content:space-between; align-items:center;">
-                <b>{medal} {s['ad']}</b>
-                <span>{s.get('tıklanma', 0)} İlgi Skoru</span>
-            </div>
-            """, unsafe_allow_html=True)
-    except: pass
-
-# --- TAB 3: KARİYER (EŞLEŞTİRME MANTIĞI) ---
-with tabs[3]:
-    k_mode = st.radio("", ["İş İlanları", "CV Bankası"], horizontal=True)
-    if k_mode == "İş İlanları":
-        try:
-            jobs = [doc.to_dict() for doc in get_col("ilanlar").stream()]
-            for j in jobs:
-                st.markdown(f"""<div class="content-card"><h4>{j['baslik']}</h4><p>🏢 {j['isletme']}<br>🎯 Aranan: {j.get('detay','')}</p></div>""", unsafe_allow_html=True)
-        except: st.write("İlan yok.")
-    else:
-        st.write("Dörtyol CV Havuzu")
-        with st.form("cv_v63"):
-            c_ad = st.text_input("Ad Soyad")
-            c_uz = st.text_input("Uzmanlık (Usta, Şoför, Kasiyer vb.)")
-            c_te = st.text_input("Telefon")
-            if st.form_submit_button("CV'mi Yayınla (Elite Üyelik Gerekebilir)"):
-                get_col("cvler").add({"ad": c_ad, "is": c_uz, "tel": c_te, "tarih": datetime.now()})
-                st.success("CV'niz sisteme işlendi!")
-
-# --- TAB 4: ADMIN (ANALYTICS & CONTROL) ---
+# --- TAB 4: ADMIN (AKILLI GÜNCELLEME) ---
 with tabs[4]:
-    adm = st.text_input("Yönetici", type="password")
+    adm = st.text_input("Yönetici Paneli", type="password")
     if adm == ADMIN_SIFRE:
-        st.write("📊 **Dükkan Performans Analizi**")
-        try:
-            perf = [doc.to_dict() for doc in get_col("dukkanlar").stream()]
-            for p in perf:
-                intent_score = (p.get('tıklanma', 0) * 1.2) # Basit bir niyet simülasyonu
-                st.write(f"🏢 {p['ad']} | Tıklanma: {p.get('tıklanma')} | Tahmini Alım Niyeti: %{min(100, int(intent_score/10))}")
-        except: pass
+        st.success("Yönetici Yetkisi Onaylandı.")
         
-        if st.button("🚀 SİSTEMİ 2026 VERİLERİYLE GÜNCELLE"):
-            seed_v63()
-            st.success("Tüm mahalleler ve güncel fiyatlar yüklendi!")
+        st.write("### 🤖 Akıllı Veri Botları")
+        st.info("Bu butonlar Google Search üzerinden en güncel Dörtyol verilerini çeker. Gereksiz kullanmayın (Limit Dostu).")
+        
+        c_up1, c_up2, c_up3 = st.columns(3)
+        if c_up1.button("💰 ALTIN FİYATI ÇEK"):
+            with st.spinner("Piyasa taranıyor..."):
+                res = get_ai_niche_data("gold")
+                get_col("haberler").add({"tip": "indirim", "mahalle": "Tümü", "sektor": "Kuyumcu", "baslik": "Güncel Altın Piyasası", "detay": res, "tarih": datetime.now()})
+                st.success("Altın fiyatları Nabız'a eklendi!")
+        
+        if c_up2.button("⛽ BENZİN FİYATI ÇEK"):
+            with st.spinner("EPDK taranıyor..."):
+                res = get_ai_niche_data("fuel")
+                get_col("haberler").add({"tip": "duyuru", "mahalle": "Tümü", "sektor": "Ulaşım", "baslik": "Akaryakıt Durumu", "detay": res, "tarih": datetime.now()})
+                st.success("Fiyatlar güncellendi!")
+        
+        if c_up3.button("🚑 ECZANELERİ ÇEK"):
+            with st.spinner("Nöbetçiler aranıyor..."):
+                res = get_ai_niche_data("pharmacy")
+                get_col("haberler").add({"tip": "duyuru", "mahalle": "Tümü", "baslik": "Nöbetçi Eczaneler", "detay": res, "tarih": datetime.now()})
+                st.success("Eczane listesi yayında!")
 
-st.markdown(f"<div style='text-align:center; padding-top:50px; opacity:0.3; color:white;'>© {GUNCEL_YIL} Albayrax Elite Empire v63</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center; padding-top:50px; opacity:0.3; color:white;'>© {GUNCEL_YIL} Albayrax Elite & Smart v64</div>", unsafe_allow_html=True)
