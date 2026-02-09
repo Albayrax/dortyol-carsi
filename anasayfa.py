@@ -9,7 +9,7 @@ import re
 
 # --- 1. SİSTEM YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Dörtyol Çarşı | v69 Municipality Pro",
+    page_title="Dörtyol Dijital Şehir Portalı | v70",
     page_icon="🏛️",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -38,131 +38,161 @@ db = firestore.client() if firebase_admin._apps else None
 def get_col(col_name):
     return db.collection("artifacts").document(APP_ID).collection("public").document("data").collection(col_name)
 
-# --- 3. AKILLI BELEDİYE BOTU (TARGETED SEARCH) ---
+# --- 3. AKILLI BELEDİYE BOTU (GELİŞMİŞ) ---
 def get_municipality_data(data_type):
-    """Belediye sitesine odaklı veri çekme motoru"""
-    if not apiKey:
-        return "⚠️ API Anahtarı eksik."
+    """Belediye sitesine odaklı profesyonel veri çekme motoru"""
+    if not apiKey: return "⚠️ API Anahtarı eksik."
 
     target_prompts = {
-        "funeral": "dortyol.bel.tr sitesindeki bugünkü ve son 2 güne ait vefat haberlerini isim, mahalle ve cenaze saati olarak liste ver.",
-        "news": "dortyol.bel.tr sitesindeki en güncel 3 duyuruyu veya belediye haberini başlık ve kısa özet olarak ver.",
-        "pharmacy": "Dörtyol/Hatay bugünkü güncel nöbetçi eczane bilgilerini isim ve telefon olarak liste ver."
+        "funeral": "dortyol.bel.tr sitesindeki bugünkü vefat haberlerini (isim, mahalle, cenaze saati) liste şeklinde ver.",
+        "announcements": "dortyol.bel.tr sitesindeki güncel duyuruları, ihaleleri ve kurs ilanlarını başlıklar halinde ver.",
+        "news": "Dörtyol Belediyesi'nin son 3 güncel haberini başlık ve kısa özet olarak ver.",
+        "pharmacy": "Dörtyol Hatay bugün nöbetçi eczane bilgilerini isim ve telefon olarak liste ver."
     }
 
     user_query = target_prompts.get(data_type, "")
-    
-    # Gemini API ile Google Search (Belediye Odaklı)
     payload = {
         "contents": [{"parts": [{"text": user_query}]}],
         "tools": [{"google_search": {}}],
-        "systemInstruction": {"parts": [{"text": "Sen sadece dortyol.bel.tr ve resmi yerel kaynakları baz alan bir veri çekme robotusun. Çok kısa ve madde madde cevap ver."}]}
+        "systemInstruction": {"parts": [{"text": "Sen bir belediye asistanısın. Sadece resmi kaynakları baz alarak, kurumsal bir dille, kısa ve öz liste ver."}]}
     }
-    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={apiKey}"
     
-    # Exponential Backoff Retry Mantığı
-    for i in [1, 2, 4]:
-        try:
-            res = requests.post(url, json=payload, timeout=30)
-            if res.status_code == 200:
-                return res.json().get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', "Veri şu an çekilemiyor.")
-            time.sleep(i)
-        except: time.sleep(i)
-    return "⚠️ Bağlantı hatası: Belediye sunucularına ulaşılamadı."
+    try:
+        res = requests.post(url, json=payload, timeout=30)
+        if res.status_code == 200:
+            return res.json().get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', "Veri şu an çekilemiyor.")
+    except: pass
+    return "⚠️ Bağlantı hatası: Sunucuya ulaşılamadı."
 
-# --- 4. TASARIM (MODERN TOWN HALL STYLE) ---
+# --- 4. KURUMSAL TASARIM (TOWN HALL UI) ---
 st.markdown("""
     <style>
+    /* Belediye Kurumsal Teması */
     .stApp {
-        background: linear-gradient(135deg, #003366 0%, #001F3F 100%);
-        background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+        background-color: #F4F7F9;
+        background-image: linear-gradient(180deg, #003366 0%, #F4F7F9 350px);
         background-attachment: fixed;
     }
-    h1, h2, h3, h4, p, span, label { color: white !important; font-family: 'Inter', sans-serif; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+
+    h1, h2, h3, h4, p, span, label { font-family: 'Inter', sans-serif; }
+    .main-header { color: white !important; font-weight: 900; text-align: center; margin-top: -50px; font-size: 2.2rem; }
     
-    /* İçerik Kartları (Premium Glass) */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(10px);
-        padding: 20px;
-        border-radius: 20px;
-        border: 2px solid #FF8C00;
-        box-shadow: 10px 10px 0px rgba(255, 140, 0, 0.3);
+    /* Kartlar (Official Glassmorphism) */
+    .official-card {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        border-top: 5px solid #FF8C00;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         margin-bottom: 20px;
     }
-    .glass-card h3, .glass-card h4, .glass-card p, .glass-card b { color: #001F3F !important; text-shadow: none !important; }
+    .official-card h3, .official-card h4 { color: #003366 !important; margin-top: 0; }
+    .official-card p { color: #444 !important; line-height: 1.6; }
 
-    /* Butonlar */
+    /* Navigasyon Sekmeleri */
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; background-color: transparent; }
+    .stTabs [data-baseweb="tab"] { 
+        background-color: rgba(255,255,255,0.1) !important; 
+        color: white !important; 
+        border-radius: 10px 10px 0 0 !important;
+        padding: 10px 20px !important;
+        font-weight: bold;
+    }
+    .stTabs [aria-selected="true"] { background-color: white !important; color: #003366 !important; }
+
+    /* Hızlı İşlem Butonları */
+    .quick-action {
+        background: #003366; color: white !important; padding: 15px; border-radius: 12px; text-align: center; 
+        cursor: pointer; transition: 0.3s; font-weight: bold; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .quick-action:hover { background: #FF8C00; transform: translateY(-3px); }
+
+    /* Buton Tasarımı */
     .stButton>button {
-        background: white !important;
-        color: #001F3F !important;
-        font-weight: 800 !important;
-        border-radius: 12px !important;
-        border: 3px solid #FF8C00 !important;
-        height: 3.5rem;
+        background: #003366 !important; color: white !important; border-radius: 10px !important; font-weight: 800 !important;
+        border: none !important; height: 3.5rem; transition: 0.3s;
     }
-    .stButton>button:hover { background: #FF8C00 !important; color: white !important; }
-    
-    .status-badge {
-        background: #FF8C00; color: white !important; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 900;
-    }
+    .stButton>button:hover { background: #FF8C00 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 5. ANA MANTIK ---
+# --- 5. GİRİŞ KONTROLÜ ---
 if 'is_site_unlocked' not in st.session_state: st.session_state.is_site_unlocked = False
 if 'selected_shop_id' not in st.session_state: st.session_state.selected_shop_id = None
 
 if not st.session_state.is_site_unlocked:
-    st.markdown('<h1 style="text-align:center; font-size:3rem; margin-top:50px;">🏛️ DÖRTYOL DİJİTAL</h1>', unsafe_allow_html=True)
+    st.markdown('<div style="height:50px;"></div>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">DÖRTYOL DİJİTAL <br/> ŞEHİR PORTALI</h1>', unsafe_allow_html=True)
     _, c, _ = st.columns([1, 2, 1])
     with c:
         pwd = st.text_input("Giriş Kodu", type="password")
-        if st.button("PORTALI AÇ"):
+        if st.button("PORTALA GİRİŞ YAP"):
             if pwd == SITE_GIRIS_SIFRESI: st.session_state.is_site_unlocked = True; st.rerun()
     st.stop()
 
 # --- HEADER ---
-st.markdown('<h1 style="text-align:center; font-weight:900; font-size:2.5rem; letter-spacing:-2px;">DÖRTYOL PORTAL</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align:center; opacity:0.8;">Şehrin Nabzı, Esnafın Gücü</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">🏛️ DÖRTYOL PORTAL</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align:center; color:white; opacity:0.9;">Geleceğin Akıllı Şehri Dörtyol</p>', unsafe_allow_html=True)
 
-tabs = st.tabs(["📢 ŞEHİR NABZI", "🏛️ ÇARŞI", "💼 KARİYER", "🔑 YÖNETİM"])
+tabs = st.tabs(["📢 ŞEHİR NABZI", "🏛️ E-BELEDİYE", "🛍️ ESNAF ÇARŞISI", "💼 KARİYER", "🔑 YÖNETİM"])
 
-# --- TAB 0: ŞEHİR NABZI (RESMİ BELEDİYE VERİLERİ) ---
+# --- TAB 0: ŞEHİR NABZI ---
 with tabs[0]:
     try:
         data_snap = get_col("sistem_bilgi").document("canli").get()
         live = data_snap.to_dict() if data_snap.exists else {}
     except: live = {}
 
-    st.markdown("### 🕯️ Vefat Haberleri (Resmi)")
-    st.write(live.get('funeral', 'Güncel veri bekleniyor...'))
+    st.markdown("""
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div class="quick-action" style="flex:1;">🕯️ Vefat</div>
+        <div class="quick-action" style="flex:1;">💊 Eczane</div>
+        <div class="quick-action" style="flex:1;">🔔 Duyuru</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_l, col_r = st.columns(2)
+    with col_l:
+        st.markdown(f'<div class="official-card"><h4>🕯️ Vefat Haberleri</h4>{live.get("funeral", "*Güncel veri bekleniyor.*")}</div>', unsafe_allow_html=True)
+    with col_r:
+        st.markdown(f'<div class="official-card"><h4>💊 Nöbetçi Eczaneler</h4>{live.get("pharmacy", "*Lütfen güncelleyin.*")}</div>', unsafe_allow_html=True)
+
+    st.markdown(f'<div class="official-card"><h4>🔔 Güncel Duyuru & İhaleler</h4>{live.get("announcements", "*Yeni duyuru bulunamadı.*")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="official-card"><h4>📰 Belediye Haberleri</h4>{live.get("news", "*Haber akışı bekleniyor.*")}</div>', unsafe_allow_html=True)
+
+# --- TAB 1: E-BELEDİYE (YENİ) ---
+with tabs[1]:
+    st.subheader("Hızlı Belediye İşlemleri")
+    st.info("Bu bölüm sizi resmi 'dortyol.bel.tr' işlem sayfalarına yönlendirir.")
+    
+    e_cols = st.columns(2)
+    with e_cols[0]:
+        st.markdown('<div class="quick-action">💳 Vergi Ödeme (E-Belediye)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="quick-action">📜 Arsa Rayiç Sorgulama</div>', unsafe_allow_html=True)
+    with e_cols[1]:
+        st.markdown('<div class="quick-action">📝 Nikah Başvurusu</div>', unsafe_allow_html=True)
+        st.markdown('<div class="quick-action">📂 Başvuru Takip</div>', unsafe_allow_html=True)
     
     st.divider()
-    st.markdown("### 🔔 Belediye Duyuruları")
-    st.write(live.get('news', 'Yeni duyuru bulunamadı.'))
+    st.markdown('<div class="official-card"><h4>🏛️ Başkanın Mesajı</h4><p>"Dörtyolumuzu dijital çağın imkanlarıyla buluşturmaya devam ediyoruz. Bu portal, esnafımızla halkımızı bir araya getiren şehrimizin yeni vitrinidir."</p></div>', unsafe_allow_html=True)
 
-    st.divider()
-    st.markdown("### 💊 Nöbetçi Eczaneler")
-    st.write(live.get('pharmacy', 'Liste bekleniyor.'))
-
-# --- TAB 1: ÇARŞI ---
-with tabs[1]:
+# --- TAB 2: ESNAF ÇARŞISI ---
+with tabs[2]:
     if st.session_state.selected_shop_id is None:
         try:
             shops = [dict(doc.to_dict(), id=doc.id) for doc in get_col("dukkanlar").stream()]
             for s in shops:
                 st.markdown(f"""
-                <div class="glass-card">
+                <div class="official-card">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <h3>{s['ad']}</h3>
-                        <span class="status-badge">⭐ 5.0</span>
+                        <span style="background:#003366; color:white; padding:4px 10px; border-radius:10px; font-size:0.7rem;">ESNAF</span>
                     </div>
-                    <p>{s.get('sektor')} | Dörtyol</p>
+                    <p>{s.get('sektor')} | Dörtyol Rehberi</p>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button(f"🏪 Mağazayı Gez: {s['ad']}", key=f"v_{s['id']}"):
+                if st.button(f"🏪 Mağazayı İncele: {s['ad']}", key=f"v_{s['id']}"):
                     st.session_state.selected_shop_id = s['id']
                     get_col("dukkanlar").document(s['id']).update({"tıklanma": firestore.Increment(1)})
                     st.rerun()
@@ -178,39 +208,45 @@ with tabs[1]:
             st.title(s['ad'])
             st.divider()
             for p in s.get('urunler', []):
-                st.markdown(f'<div class="glass-card" style="display:flex; justify-content:space-between;"><b>{p["ad"]}</b><b style="color:green;">{p["fiyat"]} ₺</b></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="official-card" style="display:flex; justify-content:space-between; border-top:none; border-left:5px solid #FF8C00;"><b>{p["ad"]}</b><b style="color:#003366;">{p["fiyat"]} ₺</b></div>', unsafe_allow_html=True)
 
-# --- TAB 3: YÖNETİM (GÜNCELLEME MERKEZİ) ---
+# --- TAB 3: KARİYER ---
 with tabs[3]:
-    adm = st.text_input("Yönetici Şifresi", type="password")
+    st.subheader("Dörtyol İstihdam Merkezi")
+    k_tabs = st.tabs(["📢 Personel Alımları", "👤 Özgeçmiş (CV) Havuzu"])
+    with k_tabs[0]:
+        st.write("Dörtyol Belediyesi ve yerel esnafın aktif iş ilanları.")
+        try:
+            jobs = [doc.to_dict() for doc in get_col("ilanlar").stream()]
+            for j in jobs:
+                st.markdown(f'<div class="official-card"><h4>{j["baslik"]}</h4><p>🏢 {j["isletme"]}<br>📞 {j["tel"]}</p></div>', unsafe_allow_html=True)
+        except: st.write("Aktif ilan bulunamadı.")
+
+# --- TAB 4: YÖNETİM ---
+with tabs[4]:
+    adm = st.text_input("Yönetici Yetkilendirme", type="password")
     if adm == ADMIN_SIFRE:
-        st.success("Sistem Kontrolü Sizde.")
+        st.success("Resmi Yönetici Girişi Onaylandı.")
         
-        st.subheader("🏛️ Belediye Verilerini Senkronize Et")
-        st.info("Bu butonlar 'dortyol.bel.tr' adresinden canlı verileri çeker.")
+        st.subheader("🏛️ Belediye Veri Senkronizasyonu")
+        st.info("Canlı verileri belediye sunucularından tazeleyin.")
         
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4 = st.columns(4)
         with c1:
-            if st.button("🕯️ VEFAT ÇEK"):
-                with st.spinner("Belediye taranıyor..."):
-                    res = get_municipality_data("funeral")
-                    get_col("sistem_bilgi").document("canli").set({"funeral": res, "time": datetime.now()}, merge=True); st.rerun()
+            if st.button("🕯️ VEFAT GÜNCELLE"):
+                res = get_municipality_data("funeral")
+                get_col("sistem_bilgi").document("canli").set({"funeral": res}, merge=True); st.rerun()
         with c2:
-            if st.button("🔔 DUYURU ÇEK"):
-                with st.spinner("Haberler çekiliyor..."):
-                    res = get_municipality_data("news")
-                    get_col("sistem_bilgi").document("canli").set({"news": res}, merge=True); st.rerun()
+            if st.button("🔔 DUYURU GÜNCELLE"):
+                res = get_municipality_data("announcements")
+                get_col("sistem_bilgi").document("canli").set({"announcements": res}, merge=True); st.rerun()
         with c3:
-            if st.button("💊 ECZANE ÇEK"):
-                with st.spinner("Liste alınıyor..."):
-                    res = get_municipality_data("pharmacy")
-                    get_col("sistem_bilgi").document("canli").set({"pharmacy": res}, merge=True); st.rerun()
+            if st.button("📰 HABER GÜNCELLE"):
+                res = get_municipality_data("news")
+                get_col("sistem_bilgi").document("canli").set({"news": res}, merge=True); st.rerun()
+        with c4:
+            if st.button("💊 ECZANE GÜNCELLE"):
+                res = get_municipality_data("pharmacy")
+                get_col("sistem_bilgi").document("canli").set({"pharmacy": res}, merge=True); st.rerun()
 
-        # İstatistikleri Göster (Sadece Admin Görür)
-        st.divider()
-        st.markdown("### 📊 Gizli İstatistikler")
-        col1, col2 = st.columns(2)
-        col1.metric("Toplam Tıklanma", "15,840", "+250")
-        col2.metric("Aktif Dükkan", "154", "+2")
-
-st.markdown(f"<div style='text-align:center; padding-top:50px; opacity:0.3; color:white;'>© {GUNCEL_YIL} Albayrax Municipality Pro v69</div>", unsafe_allow_html=True)
+st.markdown(f"<div style='text-align:center; padding-top:50px; opacity:0.3;'>© {GUNCEL_YIL} Albayrax Municipality Pro v70</div>", unsafe_allow_html=True)
